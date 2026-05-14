@@ -1,0 +1,20 @@
+[Unit]
+Description=${APP_NAME} Queue Worker
+${WORKER_AFTER_LINE}
+${WORKER_WANTS_LINE}
+
+[Service]
+Type=simple
+User=${WEB_USER}
+Group=${WEB_GROUP}
+WorkingDirectory=${APP_ROOT}
+ExecStart=${PHP_BIN} ${APP_ROOT}/index.php worker run
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=${APP_ROOT}/application/cache ${APP_ROOT}/application/logs
+
+[Install]
+WantedBy=multi-user.target

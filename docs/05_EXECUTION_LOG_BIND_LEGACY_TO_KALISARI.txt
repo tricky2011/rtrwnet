@@ -1,0 +1,12 @@
+id	level_type	step_name	detail	created_at
+1	INFO	STEP0	Router Kalisari ditemukan dengan ID=2	2026-02-24 17:18:35
+table_name	null_router_id
+cashflow_transactions	0
+customers	0
+invoices	0
+pppoe_secrets	0
+telegram_groups	0
+tickets	0
+work_orders	0
+superadmin_scope_ok	admin_teknisi_bound_to_kalisari	admin_teknisi_scope_null
+1	2	0

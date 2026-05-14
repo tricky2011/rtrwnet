@@ -1,0 +1,12 @@
+{
+  "appId": "com.example.rtrwnet.mobile",
+  "appName": "RTRWNet Mobile",
+  "webDir": "www",
+  "server": {
+    "url": "https://example.com/rtrwnet",
+    "androidScheme": "https",
+    "allowNavigation": [
+      "example.com"
+    ]
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "routers": [
+    {
+      "id": 2,
+      "name": "Kalisari",
+      "latitude": -6.2101284,
+      "longitude": 106.8342211,
+      "status": "active",
+      "router_id": 2,
+      "metadata": {
+        "total_olt": 4,
+        "total_customers": 1298
+      }
+    }
+  ],
+  "olts": [
+    {
+      "id": 11,
+      "name": "OLT-KLS-01",
+      "latitude": -6.2104222,
+      "longitude": 106.8331004,
+      "status": "active",
+      "router_id": 2,
+      "metadata": {
+        "router_name": "Kalisari",
+        "total_odp": 48,
+        "total_onu": 362
+      }
+    }
+  ],
+  "odps": [
+    {
+      "id": 31,
+      "name": "ODP-KLS-A1",
+      "latitude": -6.2111177,
+      "longitude": 106.8349155,
+      "status": "active",
+      "router_id": 2,
+      "metadata": {
+        "olt_id": 11,
+        "olt_name": "OLT-KLS-01",
+        "pon_port": "PON1/1",
+        "capacity": 16,
+        "used_ports": 14,
+        "usage_percent": 87.5,
+        "warning_level": "high",
+        "description": "Area RW 03"
+      }
+    }
+  ],
+  "customers": [
+    {
+      "id": 502,
+      "name": "Andi Saputra",
+      "latitude": -6.2115521,
+      "longitude": 106.8353241,
+      "status": "active",
+      "router_id": 2,
+      "metadata": {
+        "service_plan": "20M",
+        "ip_address": "172.16.20.10",
+        "odp_id": 31,
+        "odp_name": "ODP-KLS-A1",
+        "odp_latitude": -6.2111177,
+        "odp_longitude": 106.8349155
+      }
+    }
+  ]
+}

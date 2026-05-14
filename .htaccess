@@ -1,0 +1,40 @@
+Options -Indexes
+ServerSignature Off
+
+<IfModule mod_headers.c>
+    Header always unset X-Powered-By
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+    Header always set Cross-Origin-Resource-Policy "same-origin"
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Blok HTTP method yang tidak dipakai.
+    RewriteCond %{REQUEST_METHOD} ^(TRACE|TRACK|DEBUG)$ [NC]
+    RewriteRule ^ - [F,L]
+
+    # Lindungi direktori sensitif.
+    RewriteRule ^(application|system|vendor|tests|docs)/ - [F,L,NC]
+    RewriteRule ^composer\.(json|lock)$ - [F,L,NC]
+    RewriteRule ^phpunit\.xml(\.dist)?$ - [F,L,NC]
+
+    # Lindungi file sensitif di web root.
+    RewriteRule ^.*\.(sql|md|log|ini|env|yml|yaml|sh)$ - [F,L,NC]
+    RewriteRule ^sectigo_.*\.txt$ - [F,L,NC]
+</IfModule>
+
+<IfModule authz_core_module>
+    <FilesMatch "(^\.|composer\.(json|lock)|phpunit\.xml(\.dist)?|.*\.(sql|md|log|ini|env|yml|yaml|sh)|sectigo_.*\.txt)$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+<IfModule !authz_core_module>
+    <FilesMatch "(^\.|composer\.(json|lock)|phpunit\.xml(\.dist)?|.*\.(sql|md|log|ini|env|yml|yaml|sh)|sectigo_.*\.txt)$">
+        Deny from all
+    </FilesMatch>
+</IfModule>
+

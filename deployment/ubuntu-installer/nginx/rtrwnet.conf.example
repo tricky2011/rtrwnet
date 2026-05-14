@@ -1,0 +1,109 @@
+server {
+    listen 80;
+    listen [::]:80;
+
+    # Domain utama + fallback "_" untuk kebutuhan server kecil/menengah.
+    server_name rtrwnet.example.com _;
+
+    root /var/www/rtrwnet;
+    index index.php index.html index.htm;
+
+    access_log /var/log/nginx/rtrwnet_access.log;
+    error_log /var/log/nginx/rtrwnet_error.log warn;
+
+    charset utf-8;
+    client_max_body_size 32m;
+    server_tokens off;
+
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    location = /favicon.ico {
+        access_log off;
+        log_not_found off;
+    }
+
+    location = /robots.txt {
+        access_log off;
+        log_not_found off;
+    }
+
+    # Blok direktori non-public walau repo dideploy langsung dari root project.
+    location ^~ /application/ { deny all; }
+    location ^~ /system/ { deny all; }
+    location ^~ /vendor/ { deny all; }
+    location ^~ /tests/ { deny all; }
+    location ^~ /docs/ { deny all; }
+    location ^~ /deployment/ { deny all; }
+    location ^~ /mobile-app/ { deny all; }
+    location ^~ /scripts/ { deny all; }
+    location ^~ /storage/ { deny all; }
+    location ^~ /tmp/ { deny all; }
+    location ^~ /temp/ { deny all; }
+
+    location = /database { deny all; }
+    location = /db- { deny all; }
+
+    location ~* \.(?:sql|log|md|ini|env|ya?ml|sh|bak|old|dist)$ {
+        deny all;
+    }
+
+    # Rewrite utama CodeIgniter 3.
+    location / {
+        try_files $uri $uri/ /index.php$is_args$args;
+    }
+
+    # PHPMYADMIN-BEGIN
+    # Akses phpMyAdmin melalui path custom dari config.env.
+    location = /phpmyadmin {
+        return 301 /phpmyadmin/;
+    }
+
+    location /phpmyadmin/ {
+        root /usr/share;
+        index index.php index.html index.htm;
+        try_files $uri $uri/ /phpmyadmin/index.php$is_args$args;
+    }
+
+    location ~ ^/phpmyadmin/(.+\.php)$ {
+        root /usr/share;
+        include snippets/fastcgi-php.conf;
+        fastcgi_param SCRIPT_FILENAME /usr/share/phpmyadmin/$1;
+        fastcgi_param DOCUMENT_ROOT /usr/share/phpmyadmin;
+        fastcgi_param HTTP_PROXY "";
+        fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+        fastcgi_read_timeout 180s;
+        fastcgi_intercept_errors on;
+    }
+    # PHPMYADMIN-END
+
+    # Proses file PHP aplikasi.
+    location ~ \.php$ {
+        try_files $uri =404;
+        include snippets/fastcgi-php.conf;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        fastcgi_param DOCUMENT_ROOT $realpath_root;
+        # CI_ENV mengikuti .env/runtime aplikasi; jangan dioverride dari Nginx.
+        fastcgi_param HTTP_PROXY "";
+        fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+        fastcgi_read_timeout 180s;
+    }
+
+    # Cache singkat untuk asset statis.
+    location ~* \.(?:css|js|jpg|jpeg|gif|png|svg|ico|webp|woff|woff2|ttf|eot)$ {
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800, immutable";
+        access_log off;
+        log_not_found off;
+    }
+
+    # Blok file sensitif dan dotfiles.
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+
+    location ~* /(composer\.(json|lock)|package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|phpunit\.xml(\.dist)?|\.env|\.git) {
+        deny all;
+    }
+}

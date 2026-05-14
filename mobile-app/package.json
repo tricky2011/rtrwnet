@@ -1,0 +1,25 @@
+{
+  "name": "mobile-app",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "cap": "npx -y node@20 node_modules/@capacitor/cli/bin/capacitor",
+    "android:add": "npm run cap -- add android",
+    "android:sync": "npm run cap -- sync android",
+    "android:open": "npm run cap -- open android",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Capacitor Android wrapper for RTRWNet CI3 using remote server.url",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@capacitor-community/contacts": "^7.1.0",
+    "@capacitor/android": "^7.6.0",
+    "@capacitor/cli": "^7.6.0",
+    "@capacitor/core": "^7.6.0"
+  }
+}

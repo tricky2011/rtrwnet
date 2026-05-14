@@ -1,0 +1,29 @@
+# Guard tambahan untuk hasil staging.
+# Path yang match di staging akan menyebabkan installer abort.
+# Prefix "!" adalah exception yang tetap boleh ada di staging.
+
+.env
+.env.*
+!.env.example
+deployment/ubuntu-installer/config.env
+
+application/logs/**
+!application/logs
+!application/logs/index.html
+
+application/cache/**
+!application/cache
+!application/cache/index.html
+!application/cache/login_attempts
+!application/cache/login_attempts/index.html
+
+docs/02_SQL_DUMP_TERBARU.sql
+docs_backup_*/
+_backup_*/
+rtrwnet_backup.sql
+mobile-app/**
+database
+db-
+*.bak
+*.old
+*.sql.gz

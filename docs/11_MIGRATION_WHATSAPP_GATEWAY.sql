@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS `wa_message_logs` (
+  `id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `customer_id` BIGINT(20) UNSIGNED NULL,
+  `invoice_id` BIGINT(20) UNSIGNED NULL,
+  `phone` VARCHAR(40) NOT NULL,
+  `normalized_phone` VARCHAR(20) NOT NULL,
+  `message` TEXT NOT NULL,
+  `status` ENUM('pending','processing','sent','failed') NOT NULL DEFAULT 'pending',
+  `provider_response` LONGTEXT NULL,
+  `error_message` TEXT NULL,
+  `retry_count` INT(10) UNSIGNED NOT NULL DEFAULT 0,
+  `sent_at` DATETIME NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_wa_message_logs_customer_id` (`customer_id`),
+  KEY `idx_wa_message_logs_invoice_id` (`invoice_id`),
+  KEY `idx_wa_message_logs_status` (`status`),
+  KEY `idx_wa_message_logs_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

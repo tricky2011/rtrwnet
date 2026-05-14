@@ -1,0 +1,44 @@
+id	name	is_active	ip_address	api_port
+2	Kalisari	1	10.203.22.254	8728
+3	Tembalang	1	172.16.9.254	8728
+table_name	column_name	is_nullable	column_type
+cashflow_transactions	router_id	NO	bigint(20) unsigned
+customers	router_id	NO	bigint(20) unsigned
+ip_pools	router_id	NO	bigint(20) unsigned
+pppoe_secrets	router_id	NO	bigint(20) unsigned
+ppp_profiles	router_id	NO	bigint(20) unsigned
+tickets	router_id	NO	bigint(20) unsigned
+work_orders	router_id	NO	bigint(20) unsigned
+table_name	constraint_name	delete_rule	update_rule
+cashflow_transactions	fk_cashflow_transactions_router	RESTRICT	CASCADE
+customers	fk_customers_router	RESTRICT	CASCADE
+ip_pools	fk_ip_pools_router	RESTRICT	CASCADE
+pppoe_secrets	fk_pppoe_secrets_router	RESTRICT	CASCADE
+ppp_profiles	fk_ppp_profiles_router	RESTRICT	CASCADE
+tickets	fk_tickets_router	RESTRICT	CASCADE
+work_orders	fk_work_orders_router	RESTRICT	CASCADE
+table_name	total_rows	null_router_rows	orphan_router_rows
+customers	241	0	0
+pppoe_secrets	0	NULL	NULL
+ppp_profiles	7	0	0
+ip_pools	7	0	0
+work_orders	2	0	0
+tickets	6	0	0
+cashflow_transactions	28	0	0
+Table	Non_unique	Key_name	Seq_in_index	Column_name	Collation	Cardinality	Sub_part	Packed	Null	Index_type	Comment	Index_comment
+pppoe_secrets	0	PRIMARY	1	id	A	0	NULL	NULL		BTREE		
+pppoe_secrets	0	uq_pppoe_secrets_router_username	1	router_id	A	0	NULL	NULL		BTREE		
+pppoe_secrets	0	uq_pppoe_secrets_router_username	2	username	A	0	NULL	NULL		BTREE		
+pppoe_secrets	1	idx_pppoe_secrets_profile	1	profile	A	0	NULL	NULL	YES	BTREE		
+pppoe_secrets	1	idx_pppoe_secrets_disabled	1	disabled	A	0	NULL	NULL		BTREE		
+pppoe_secrets	1	idx_pppoe_secrets_router	1	router_id	A	0	NULL	NULL		BTREE		
+Table	Non_unique	Key_name	Seq_in_index	Column_name	Collation	Cardinality	Sub_part	Packed	Null	Index_type	Comment	Index_comment
+ppp_profiles	0	PRIMARY	1	id	A	7	NULL	NULL		BTREE		
+ppp_profiles	0	uq_ppp_profiles_router_name	1	router_id	A	2	NULL	NULL		BTREE		
+ppp_profiles	0	uq_ppp_profiles_router_name	2	name	A	7	NULL	NULL		BTREE		
+ppp_profiles	1	idx_ppp_profiles_router	1	router_id	A	2	NULL	NULL		BTREE		
+Table	Non_unique	Key_name	Seq_in_index	Column_name	Collation	Cardinality	Sub_part	Packed	Null	Index_type	Comment	Index_comment
+ip_pools	0	PRIMARY	1	id	A	7	NULL	NULL		BTREE		
+ip_pools	0	uq_ip_pools_router_pool_name	1	router_id	A	2	NULL	NULL		BTREE		
+ip_pools	0	uq_ip_pools_router_pool_name	2	pool_name	A	7	NULL	NULL		BTREE		
+ip_pools	1	idx_ip_pools_router	1	router_id	A	2	NULL	NULL		BTREE		

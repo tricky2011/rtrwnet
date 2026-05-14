@@ -1,0 +1,78 @@
+[
+  {
+    "id": "IPTR069",
+    "script_file": "scripts/IPTR069.js"
+  },
+  {
+    "id": "PonMac",
+    "script_file": "scripts/PonMac.js"
+  },
+  {
+    "id": "RXPower",
+    "script_file": "scripts/RXPower.js"
+  },
+  {
+    "id": "WlanPassword",
+    "script_file": "scripts/WlanPassword.js"
+  },
+  {
+    "id": "activedevices",
+    "script_file": "scripts/activedevices.js"
+  },
+  {
+    "id": "getSerialNumber",
+    "script_file": "scripts/getSerialNumber.js"
+  },
+  {
+    "id": "getdeviceuptime",
+    "script_file": "scripts/getdeviceuptime.js"
+  },
+  {
+    "id": "getponmode",
+    "script_file": "scripts/getponmode.js"
+  },
+  {
+    "id": "getpppuptime",
+    "script_file": "scripts/getpppuptime.js"
+  },
+  {
+    "id": "gettemp",
+    "script_file": "scripts/gettemp.js"
+  },
+  {
+    "id": "pppoeIP",
+    "script_file": "scripts/pppoeIP.js"
+  },
+  {
+    "id": "pppoeMac",
+    "script_file": "scripts/pppoeMac.js"
+  },
+  {
+    "id": "pppoePassword",
+    "script_file": "scripts/pppoePassword.js"
+  },
+  {
+    "id": "pppoeUsername",
+    "script_file": "scripts/pppoeUsername.js"
+  },
+  {
+    "id": "pppoeUsername2",
+    "script_file": "scripts/pppoeUsername2.js"
+  },
+  {
+    "id": "superAdmin",
+    "script_file": "scripts/superAdmin.js"
+  },
+  {
+    "id": "superPassword",
+    "script_file": "scripts/superPassword.js"
+  },
+  {
+    "id": "userAdmin",
+    "script_file": "scripts/userAdmin.js"
+  },
+  {
+    "id": "userPassword",
+    "script_file": "scripts/userPassword.js"
+  }
+]

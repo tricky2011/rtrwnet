@@ -1,0 +1,15 @@
+# Otoritas staging package.
+# Installer final hanya akan menyalin path yang tercantum di bawah ini ke STAGING_DIR.
+.env.example
+.htaccess
+index.php
+application/
+assets/
+deployment/ubuntu-installer/
+docs/genieacs_virtual_parameters/
+manifest.json
+manifest.webmanifest
+pwa/
+public/
+system/
+vendor/

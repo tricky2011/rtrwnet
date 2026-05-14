@@ -1,0 +1,11 @@
+# Installer akan merender file ini menjadi /etc/cron.d/<CRON_FILE_NAME>.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+*/5 * * * * ${WEB_USER} ${PHP_BIN} ${APP_ROOT}/index.php cron/Invoice_cron generate >/dev/null 2>&1
+*/10 * * * * ${WEB_USER} ${PHP_BIN} ${APP_ROOT}/index.php cron/Invoice_cron check_overdue >/dev/null 2>&1
+*/10 * * * * ${WEB_USER} ${PHP_BIN} ${APP_ROOT}/index.php cron/Billing_cron auto_suspend >/dev/null 2>&1
+*/2 * * * * ${WEB_USER} ${PHP_BIN} ${APP_ROOT}/index.php cron/Monitoring_cron check_health >/dev/null 2>&1
+*/10 * * * * ${WEB_USER} ${PHP_BIN} ${APP_ROOT}/index.php cron/Static_ip_cron sync_static_ip_arp >/dev/null 2>&1
+*/10 * * * * ${WEB_USER} ${PHP_BIN} ${APP_ROOT}/index.php CronNotification run_all >/dev/null 2>&1
+*/15 * * * * ${WEB_USER} ${PHP_BIN} ${APP_ROOT}/index.php Helpdesk_cron check_sla >/dev/null 2>&1
