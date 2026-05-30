@@ -27,6 +27,9 @@ class Genieacs
     /** @var bool */
     protected $verifySsl = false;
 
+    /** @var bool */
+    protected $taskConnectionRequest = false;
+
     /** @var object|null */
     protected $settingsModel = null;
 
@@ -45,6 +48,7 @@ class Genieacs
         $cfg = (array) $this->CI->config->item('genieacs');
         $this->timeout = max(5, (int) ($cfg['genieacs_timeout'] ?? 20));
         $this->verifySsl = !empty($cfg['genieacs_verify_ssl']);
+        $this->taskConnectionRequest = !empty($cfg['genieacs_task_connection_request']);
 
         $params = is_array($params) ? $params : array();
         $router_id = (int) ($params['router_id'] ?? 0);
@@ -144,11 +148,11 @@ class Genieacs
 
         $deviceId = (string) $device['data']['_id'];
         $payload = array('name' => 'reboot');
-        $resp = $this->request('POST', '/devices/' . rawurlencode($deviceId) . '/tasks?connection_request', $payload);
+        $resp = $this->request('POST', $this->taskPath($deviceId), $payload);
         if (empty($resp['success'])) {
             return array('success' => false, 'message' => (string) ($resp['message'] ?? 'Task reboot gagal.'));
         }
-        return array('success' => true, 'message' => 'Task reboot berhasil dikirim.');
+        return array('success' => true, 'message' => 'Task reboot berhasil dikirim ke antrean GenieACS.');
     }
 
     public function setWifi($serial, $ssid, $password)
@@ -189,12 +193,12 @@ class Genieacs
             'name' => 'setParameterValues',
             'parameterValues' => $params,
         );
-        $setResp = $this->request('POST', '/devices/' . rawurlencode($deviceId) . '/tasks?connection_request', $taskPayload);
+        $setResp = $this->request('POST', $this->taskPath($deviceId), $taskPayload);
         if (empty($setResp['success'])) {
             return array('success' => false, 'message' => (string) ($setResp['message'] ?? 'Task set WiFi gagal.'));
         }
 
-        $rebootResp = $this->request('POST', '/devices/' . rawurlencode($deviceId) . '/tasks?connection_request', array('name' => 'reboot'));
+        $rebootResp = $this->request('POST', $this->taskPath($deviceId), array('name' => 'reboot'));
         if (empty($rebootResp['success'])) {
             return array('success' => false, 'message' => 'WiFi terset, tapi reboot gagal dikirim.');
         }
@@ -210,7 +214,12 @@ class Genieacs
         }
 
         if (empty($parameterNames)) {
-            $parameterNames = array('RXPower', 'WlanPassword', 'pppoeUsername', 'pppoeIP');
+            $parameterNames = array(
+                'VirtualParameters.RXPower',
+                'VirtualParameters.WlanPassword',
+                'VirtualParameters.pppoeUsername',
+                'VirtualParameters.pppoeIP',
+            );
         }
 
         $normalized = array();
@@ -233,7 +242,7 @@ class Genieacs
 
         $resp = $this->request(
             'POST',
-            '/devices/' . rawurlencode($deviceId) . '/tasks?connection_request',
+            $this->taskPath($deviceId),
             $payload
         );
         if (empty($resp['success'])) {
@@ -295,8 +304,8 @@ class Genieacs
         return $this->pickByPaths($row, array(
             'VirtualParameters.pppoeIP._value',
             'VirtualParameters.PPPoEIP._value',
-            'InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANIPConnection.*.ExternalIPAddress._value',
             'InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANPPPConnection.*.ExternalIPAddress._value',
+            'InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANIPConnection.*.ExternalIPAddress._value',
             'Device.IP.Interface.*.IPv4Address.*.IPAddress._value',
             'Device.IP.Interface.*.IPv6Address.*.IPAddress._value',
         ));
@@ -320,7 +329,11 @@ class Genieacs
             'InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.PreSharedKey.*.KeyPassphrase._value',
             'InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.PreSharedKey.*.PreSharedKey._value',
             'InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.KeyPassphrase._value',
+            'InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.WPAKey.*.WPAKey._value',
+            'InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.WPAKey._value',
             'InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.X_CT-COM_WPSKeyWord._value',
+            'InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.X_CMCC_WPSKeyWord._value',
+            'InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.X_ZTE-COM_WPSKeyWord._value',
             'Device.WiFi.AccessPoint.*.Security.KeyPassphrase._value',
             'Device.WiFi.AccessPoint.*.Security.PreSharedKey._value',
             'InternetGatewayDevice.X_CMCC_UserInfo.Password._value',
@@ -329,15 +342,35 @@ class Genieacs
 
     public function extractPppoeUsername(array $row)
     {
-        return $this->pickByPaths($row, array(
-            'VirtualParameters.pppoeUsername._value',
-            'VirtualParameters.pppoeUsername2._value',
-            'VirtualParameters.PPPoEUsername._value',
-            'InternetGatewayDevice.X_CT-COM_UserInfo.UserName._value',
+        $serial = $this->extractSerial($row);
+        $paths = array(
             'InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANPPPConnection.*.Username._value',
             'InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANPPPConnection.*.UserName._value',
             'Device.PPP.Interface.*.Username._value',
-        ));
+            'VirtualParameters.pppoeUsername._value',
+            'VirtualParameters.pppoeUsername2._value',
+            'VirtualParameters.PPPoEUsername._value',
+            'InternetGatewayDevice.X_CU_UserInfo.UserName._value',
+            'InternetGatewayDevice.X_CU_UserInfo.UserId._value',
+            'InternetGatewayDevice.X_CMCC_UserInfo.UserName._value',
+            'InternetGatewayDevice.X_CMCC_UserInfo.UserId._value',
+            'InternetGatewayDevice.X_CT-COM_UserInfo.UserName._value',
+            'InternetGatewayDevice.X_CT-COM_UserInfo.UserId._value',
+            'InternetGatewayDevice.X_ZTE-COM_UserInfo.UserName._value',
+        );
+
+        foreach ($paths as $path) {
+            $values = $this->valuesByPath($row, $path);
+            foreach ($values as $value) {
+                $candidate = $this->toScalarString($value);
+                if ($candidate === '' || $this->isLikelyDeviceIdentifier($candidate, $serial)) {
+                    continue;
+                }
+                return $candidate;
+            }
+        }
+
+        return '';
     }
 
     public function extractOpticalRxDbm(array $row)
@@ -530,6 +563,41 @@ class Genieacs
         $text = number_format($rounded, 2, '.', '');
         $text = rtrim(rtrim($text, '0'), '.');
         return $text . ' dBm';
+    }
+
+    protected function isLikelyDeviceIdentifier($value, $serial = '')
+    {
+        $value = strtoupper(trim((string) $value));
+        $serial = strtoupper(trim((string) $serial));
+        if ($value === '') {
+            return false;
+        }
+
+        if ($serial !== '' && $value === $serial) {
+            return true;
+        }
+        if ($serial !== '' && strlen($value) >= 6 && substr($serial, -strlen($value)) === $value) {
+            return true;
+        }
+
+        if (in_array($value, array('ADMIN', 'USER', 'ROOT', 'GLOBAL', 'XCU', 'XCT', 'CMCC', 'CU', 'CT'), true)) {
+            return true;
+        }
+
+        if (!preg_match('/^[A-Z0-9]+$/', $value)) {
+            return false;
+        }
+
+        return (bool) preg_match('/^(ZICG|ZXIC|CIOT|FHTT|CMDC|RTEG|ALCL|HWTC)[A-Z0-9]{6,}$/', $value);
+    }
+
+    protected function taskPath($deviceId)
+    {
+        $path = '/devices/' . rawurlencode((string) $deviceId) . '/tasks';
+        if ($this->taskConnectionRequest) {
+            $path .= '?connection_request';
+        }
+        return $path;
     }
 
     protected function buildProjectionQuery(array $projections)

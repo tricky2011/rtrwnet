@@ -23,6 +23,23 @@ $build_ont_url = function ($path, array $query = array()) use ($scope_router_id)
     return $url;
 };
 
+$customer_fallback_label = function (array $row) {
+    $pppoe = trim((string) ($row['ont_username'] ?? ''));
+    if ($pppoe !== '') {
+        $prefix = preg_replace('/[-_].*$/', '', $pppoe);
+        $prefix = trim((string) $prefix);
+        return $prefix !== '' ? $prefix : $pppoe;
+    }
+
+    $ssid = trim((string) ($row['ssid'] ?? ''));
+    if ($ssid !== '') {
+        return $ssid;
+    }
+
+    $wan_ip = trim((string) ($row['wan_ip'] ?? ''));
+    return $wan_ip !== '' ? $wan_ip : '-';
+};
+
 ob_start();
 ?>
 <div class="row g-3 mb-3">
@@ -119,7 +136,7 @@ ob_start();
                             $badge = $is_online ? 'bg-success' : 'bg-danger';
                             $customerLabel = trim((string) ($row['customer_name'] ?? ''));
                             if ($customerLabel === '' || $customerLabel === '-') {
-                                $customerLabel = trim((string) ($row['ont_username'] ?? ''));
+                                $customerLabel = $customer_fallback_label($row);
                             }
                             if ($customerLabel === '') {
                                 $customerLabel = '-';

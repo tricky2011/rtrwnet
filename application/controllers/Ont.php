@@ -353,6 +353,13 @@ class Ont extends MY_Controller
         $has_pppoe_username = in_array('pppoe_username', $customer_fields, true);
         $has_username = in_array('username', $customer_fields, true);
         $has_ip_address = in_array('ip_address', $customer_fields, true);
+        $customer_select = array('id');
+        if ($has_pppoe_username) {
+            $customer_select[] = 'pppoe_username';
+        }
+        if ($has_username) {
+            $customer_select[] = 'username';
+        }
 
         foreach ($rows as $row) {
             $row = is_array($row) ? $row : array();
@@ -383,6 +390,7 @@ class Ont extends MY_Controller
             $wifiPassword = trim((string) $genieacs->extractWifiPassword($row));
             $pppoeUsername = trim((string) $genieacs->extractPppoeUsername($row));
             $opticalRxDbm = trim((string) $genieacs->extractOpticalRxDbm($row));
+            $matchedCustomer = array();
 
             // Beberapa vendor tidak mengirim value langsung; trigger refresh VirtualParameters
             // agar nilai redaman/password/pppoe bisa terbaca saat sync berikutnya.
@@ -405,7 +413,7 @@ class Ont extends MY_Controller
             $customerId = null;
             if ($has_ont_device_id || $has_ont_serial || $has_pppoe_username || $has_username || $has_ip_address) {
                 // 1) Mapping utama berdasarkan ont_device_id / ont_serial.
-                $this->db->select('id')->from('customers');
+                $this->db->select(implode(',', $customer_select))->from('customers');
                 if ($has_customer_router && (int) $router_id > 0) {
                     $this->db->where('router_id', (int) $router_id);
                 }
@@ -421,11 +429,12 @@ class Ont extends MY_Controller
                 $c = $this->db->limit(1)->get()->row_array();
                 if (!empty($c['id'])) {
                     $customerId = (int) $c['id'];
+                    $matchedCustomer = $c;
                 }
 
                 // 2) Fallback berdasarkan username PPP.
                 if (!$customerId && $pppoeUsername !== '' && ($has_pppoe_username || $has_username)) {
-                    $this->db->select('id')->from('customers');
+                    $this->db->select(implode(',', $customer_select))->from('customers');
                     if ($has_customer_router && (int) $router_id > 0) {
                         $this->db->where('router_id', (int) $router_id);
                     }
@@ -444,12 +453,13 @@ class Ont extends MY_Controller
                     $c = $this->db->limit(1)->get()->row_array();
                     if (!empty($c['id'])) {
                         $customerId = (int) $c['id'];
+                        $matchedCustomer = $c;
                     }
                 }
 
                 // 3) Fallback berdasarkan WAN IP.
                 if (!$customerId && $wanIp !== '' && $has_ip_address) {
-                    $this->db->select('id')->from('customers');
+                    $this->db->select(implode(',', $customer_select))->from('customers');
                     if ($has_customer_router && (int) $router_id > 0) {
                         $this->db->where('router_id', (int) $router_id);
                     }
@@ -457,11 +467,21 @@ class Ont extends MY_Controller
                     $c = $this->db->limit(1)->get()->row_array();
                     if (!empty($c['id'])) {
                         $customerId = (int) $c['id'];
+                        $matchedCustomer = $c;
                     }
                 }
             }
 
             $existing = $this->ont_device_model->find_by_serial($serial, (int) $router_id);
+            if (!$customerId && !empty($existing['customer_id'])) {
+                $customerId = (int) $existing['customer_id'];
+            }
+            if ($customerId && empty($matchedCustomer)) {
+                $matchedCustomer = $this->load_customer_pppoe_row((int) $customerId, $customer_select);
+            }
+            if ($pppoeUsername === '' && !empty($matchedCustomer)) {
+                $pppoeUsername = $this->customer_pppoe_value($matchedCustomer);
+            }
 
             $payload = array(
                 'router_id' => (int) $router_id,
@@ -483,6 +503,9 @@ class Ont extends MY_Controller
                 foreach (array('product_class', 'manufacturer', 'wan_ip', 'ssid', 'wifi_password', 'ont_username', 'optical_rx_dbm') as $f) {
                     $newVal = trim((string) ($payload[$f] ?? ''));
                     if ($newVal === '' && !empty($existing[$f])) {
+                        if ($f === 'ont_username' && $this->is_likely_ont_identifier((string) $existing[$f], $serial)) {
+                            continue;
+                        }
                         $payload[$f] = $existing[$f];
                     }
                 }
@@ -731,25 +754,90 @@ class Ont extends MY_Controller
             return array();
         }
 
-        $refresh = $genieacs->refreshVirtualParameters(
-            $device_id,
-            array('RXPower', 'WlanPassword', 'pppoeUsername', 'pppoeIP')
+        $refreshNames = array(
+            'RXPower',
+            'WlanPassword',
+            'pppoeUsername',
+            'pppoeUsername2',
+            'pppoeIP',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.ExternalIPAddress',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.2.WANPPPConnection.1.ExternalIPAddress',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.2.WANPPPConnection.1.Username',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.3.WANPPPConnection.1.ExternalIPAddress',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.3.WANPPPConnection.1.Username',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.4.WANPPPConnection.1.ExternalIPAddress',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.4.WANPPPConnection.1.Username',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.5.WANPPPConnection.1.ExternalIPAddress',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.5.WANPPPConnection.1.Username',
+            'InternetGatewayDevice.WANDevice.1.X_CT-COM_EponInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_CMCC_EponInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_CMCC_GponInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_CT-COM_PONInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_CT-COM_WANPONInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_CU_WANEPONInterfaceConfig.OpticalTransceiver.RXPower',
+            'Device.PON.Interface.1.OpticalSignalLevel',
+            'Device.PON.Interface.1.RXPower',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.PreSharedKey',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.PreSharedKey.1.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.PreSharedKey.1.PreSharedKey',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.PreSharedKey.1.KeyPassphrase',
+            'Device.WiFi.AccessPoint.1.Security.KeyPassphrase',
+            'Device.WiFi.AccessPoint.1.Security.PreSharedKey',
         );
+
+        $refresh = $genieacs->refreshVirtualParameters($device_id, $refreshNames);
         if (empty($refresh['success'])) {
             return array();
         }
 
-        // Beri jeda singkat agar task connection-request sempat diproses CPE.
+        // Beri jeda singkat bila task diproses via connection request.
         usleep(200000);
 
         $device = $genieacs->getDeviceById($device_id, array(
             'VirtualParameters.RXPower',
             'VirtualParameters.WlanPassword',
             'VirtualParameters.pppoeUsername',
+            'VirtualParameters.pppoeUsername2',
             'VirtualParameters.pppoeIP',
             'InternetGatewayDevice.WANDevice.1.X_CT-COM_EponInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_CMCC_EponInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_CMCC_GponInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_CT-COM_PONInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_CT-COM_WANPONInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_ZTE-COM_WANPONInterfaceConfig.RXPower',
+            'InternetGatewayDevice.WANDevice.1.X_CU_WANEPONInterfaceConfig.OpticalTransceiver.RXPower',
+            'Device.PON.Interface.1.OpticalSignalLevel',
+            'Device.PON.Interface.1.RXPower',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.ExternalIPAddress',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.2.WANPPPConnection.1.ExternalIPAddress',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.2.WANPPPConnection.1.Username',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.3.WANPPPConnection.1.ExternalIPAddress',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.3.WANPPPConnection.1.Username',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.4.WANPPPConnection.1.ExternalIPAddress',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.4.WANPPPConnection.1.Username',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.5.WANPPPConnection.1.ExternalIPAddress',
+            'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.5.WANPPPConnection.1.Username',
             'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase',
             'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.PreSharedKey',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.PreSharedKey.1.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.PreSharedKey.1.PreSharedKey',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.PreSharedKey.1.KeyPassphrase',
+            'Device.WiFi.AccessPoint.1.Security.KeyPassphrase',
+            'Device.WiFi.AccessPoint.1.Security.PreSharedKey',
         ));
 
         if (empty($device['success']) || empty($device['data']) || !is_array($device['data'])) {
@@ -757,5 +845,56 @@ class Ont extends MY_Controller
         }
 
         return $device['data'];
+    }
+
+    private function load_customer_pppoe_row($customer_id, array $select)
+    {
+        $customer_id = (int) $customer_id;
+        if ($customer_id <= 0 || !$this->db->table_exists('customers')) {
+            return array();
+        }
+
+        $row = $this->db
+            ->select(implode(',', $select))
+            ->from('customers')
+            ->where('id', $customer_id)
+            ->limit(1)
+            ->get()
+            ->row_array();
+
+        return is_array($row) ? $row : array();
+    }
+
+    private function customer_pppoe_value(array $row)
+    {
+        foreach (array('pppoe_username', 'username') as $field) {
+            $value = trim((string) ($row[$field] ?? ''));
+            if ($value !== '') {
+                return $value;
+            }
+        }
+        return '';
+    }
+
+    private function is_likely_ont_identifier($value, $serial = '')
+    {
+        $value = strtoupper(trim((string) $value));
+        $serial = strtoupper(trim((string) $serial));
+        if ($value === '') {
+            return false;
+        }
+        if ($serial !== '' && $value === $serial) {
+            return true;
+        }
+        if ($serial !== '' && strlen($value) >= 6 && substr($serial, -strlen($value)) === $value) {
+            return true;
+        }
+        if (in_array($value, array('ADMIN', 'USER', 'ROOT', 'GLOBAL', 'XCU', 'XCT', 'CMCC', 'CU', 'CT'), true)) {
+            return true;
+        }
+        if (!preg_match('/^[A-Z0-9]+$/', $value)) {
+            return false;
+        }
+        return (bool) preg_match('/^(ZICG|ZXIC|CIOT|FHTT|CMDC|RTEG|ALCL|HWTC)[A-Z0-9]{6,}$/', $value);
     }
 }

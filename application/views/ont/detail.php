@@ -10,7 +10,17 @@ $db_row = isset($db_row) && is_array($db_row) ? $db_row : array();
 $scope_router_id = isset($scope_router_id) ? (int) $scope_router_id : 0;
 $customer_label = trim((string) ($db_row['customer_name'] ?? ''));
 if ($customer_label === '' || $customer_label === '-') {
-    $customer_label = trim((string) ($db_row['ont_username'] ?? ''));
+    $pppoe_label = trim((string) ($db_row['ont_username'] ?? ''));
+    if ($pppoe_label !== '') {
+        $prefix = preg_replace('/[-_].*$/', '', $pppoe_label);
+        $customer_label = trim((string) $prefix) !== '' ? trim((string) $prefix) : $pppoe_label;
+    }
+}
+if ($customer_label === '' || $customer_label === '-') {
+    $customer_label = trim((string) ($db_row['ssid'] ?? ''));
+}
+if ($customer_label === '' || $customer_label === '-') {
+    $customer_label = trim((string) ($db_row['wan_ip'] ?? ''));
 }
 if ($customer_label === '') {
     $customer_label = '-';

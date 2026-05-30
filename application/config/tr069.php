@@ -50,5 +50,5 @@ $config['tr069_parameter_map'] = array(
     ),
 );
 
-// Limit proteksi agar task tidak membanjiri ACS pada server low-spec.
-$config['tr069_task_rate_limit_seconds'] = (int) (getenv('TR069_TASK_RATE_LIMIT_SECONDS') ?: 2);
+// Limit proteksi opsional agar task tidak membanjiri ACS pada server low-spec.
+$config['tr069_task_rate_limit_seconds'] = (int) (getenv('TR069_TASK_RATE_LIMIT_SECONDS') ?: 0);
