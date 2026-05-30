@@ -350,6 +350,8 @@ class Genieacs
             'VirtualParameters.optical_rx_power._value',
             'InternetGatewayDevice.WANDevice.*.X_CT-COM_EponInterfaceConfig.RXPower._value',
             'InternetGatewayDevice.WANDevice.*.X_CT-COM_GponInterfaceConfig.RXPower._value',
+            'InternetGatewayDevice.WANDevice.*.X_CMCC_EponInterfaceConfig.RXPower._value',
+            'InternetGatewayDevice.WANDevice.*.X_CMCC_GponInterfaceConfig.RXPower._value',
             'InternetGatewayDevice.WANDevice.*.X_GponInterafceConfig.RXPower._value',
             'InternetGatewayDevice.WANDevice.*.X_FH_GponInterfaceConfig.RXPower._value',
             'InternetGatewayDevice.WANDevice.*.X_CT-COM_PONInterfaceConfig.RXPower._value',
@@ -381,6 +383,14 @@ class Genieacs
         return $this->firstString(array(
             $row['_lastInform'] ?? null,
             $row['Events.Inform']['_lastInform'] ?? null,
+        ));
+    }
+
+    public function extractConnectionRequestUrl(array $row)
+    {
+        return $this->pickByPaths($row, array(
+            'InternetGatewayDevice.ManagementServer.ConnectionRequestURL._value',
+            'Device.ManagementServer.ConnectionRequestURL._value',
         ));
     }
 
@@ -491,17 +501,35 @@ class Genieacs
             return '';
         }
 
-        // Jika value sudah berupa string dBm (mis. "-14.65 dBm (GOOD)"), pertahankan.
-        if (stripos($value, 'dbm') !== false) {
-            return $value;
-        }
-
         if (preg_match('/-?\\d+(?:\\.\\d+)?/', $value, $m)) {
-            $num = $m[0];
-            return $num . ' dBm';
+            $num = (float) $m[0];
+            if ($num > 0) {
+                $num = $this->convertRawOpticalRxToDbm($num);
+            }
+            return $this->formatDbm($num);
         }
 
         return $value;
+    }
+
+    protected function convertRawOpticalRxToDbm($raw)
+    {
+        $raw = (float) $raw;
+        if ($raw <= 0) {
+            return $raw;
+        }
+
+        // Beberapa ONT ZTE/CMCC/CT-COM mengirim RXPower sebagai raw optical power.
+        // Rumus ini sama dengan VirtualParameters.RXPower yang dipakai GenieACS lokal.
+        return 30 + (log10($raw * pow(10, -7)) * 10);
+    }
+
+    protected function formatDbm($value)
+    {
+        $rounded = round((float) $value, 2);
+        $text = number_format($rounded, 2, '.', '');
+        $text = rtrim(rtrim($text, '0'), '.');
+        return $text . ' dBm';
     }
 
     protected function buildProjectionQuery(array $projections)

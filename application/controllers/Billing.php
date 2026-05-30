@@ -823,7 +823,7 @@ class Billing extends MY_Controller
 
         $result = $this->billing_automation_service->record_payment($id, $remaining, 'cash', date('Y-m-d H:i:s'));
         if (!empty($result['success'])) {
-            $this->session->set_flashdata('success', 'Invoice berhasil ditandai lunas.');
+            $this->session->set_flashdata('success', (string) ($result['message'] ?? 'Invoice berhasil ditandai lunas.'));
             $this->push_billing_notification(
                 'success',
                 'Pembayaran berhasil',

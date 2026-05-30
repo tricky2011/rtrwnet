@@ -1036,9 +1036,26 @@ class Mikrotik_api
      */
     private function log($message)
     {
+        $message = (string) $message;
+        if (!$this->debug && !$this->should_log_when_debug_disabled($message)) {
+            return;
+        }
+
         $path = APPPATH . 'logs/' . $this->log_file;
         $line = '[' . date('Y-m-d H:i:s') . '] ' . $message . PHP_EOL;
         @file_put_contents($path, $line, FILE_APPEND | LOCK_EX);
+    }
+
+    private function should_log_when_debug_disabled($message)
+    {
+        $message = strtoupper((string) $message);
+        foreach (array('FAILED', 'ERROR', 'ABORT', 'ERR ') as $needle) {
+            if (strpos($message, $needle) !== false) {
+                return true;
+            }
+        }
+
+        return strpos($message, 'ERR') === 0;
     }
 
     /**

@@ -3,6 +3,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Ont extends MY_Controller
 {
+    private $connection_request_reachability = array();
+
     public function __construct()
     {
         $is_cli = is_cli();
@@ -341,6 +343,9 @@ class Ont extends MY_Controller
 
         $rows = $resp['data'];
         $total = count($rows);
+        $genieacs_cfg = (array) $this->config->item('genieacs');
+        $allowVirtualRefresh = !empty($genieacs_cfg['genieacs_sync_refresh_virtual_parameters']);
+        $allowConnectionRequestOnlineCheck = !empty($genieacs_cfg['genieacs_connection_request_online_check']);
         $customer_fields = $this->db->table_exists('customers') ? $this->db->list_fields('customers') : array();
         $has_ont_device_id = in_array('ont_device_id', $customer_fields, true);
         $has_ont_serial = in_array('ont_serial', $customer_fields, true);
@@ -363,6 +368,9 @@ class Ont extends MY_Controller
             $lastInformRaw = trim((string) $genieacs->extractLastInform($row));
             $lastInform = $this->normalize_datetime($lastInformRaw);
             $isOnline = $this->is_online($lastInform);
+            if (!$isOnline && $allowConnectionRequestOnlineCheck) {
+                $isOnline = $this->is_connection_request_reachable($genieacs->extractConnectionRequestUrl($row));
+            }
             if ($isOnline) {
                 $online++;
             } else {
@@ -378,7 +386,8 @@ class Ont extends MY_Controller
 
             // Beberapa vendor tidak mengirim value langsung; trigger refresh VirtualParameters
             // agar nilai redaman/password/pppoe bisa terbaca saat sync berikutnya.
-            $needsVirtualRefresh = $isOnline
+            $needsVirtualRefresh = $allowVirtualRefresh
+                && $isOnline
                 && $deviceId !== ''
                 && ($opticalRxDbm === '' || $wifiPassword === '' || $pppoeUsername === '');
 
@@ -678,6 +687,38 @@ class Ont extends MY_Controller
             return false;
         }
         return $ts >= (time() - 600);
+    }
+
+    private function is_connection_request_reachable($url)
+    {
+        $url = trim((string) $url);
+        if ($url === '' || !function_exists('curl_init')) {
+            return false;
+        }
+
+        if (isset($this->connection_request_reachability[$url])) {
+            return (bool) $this->connection_request_reachability[$url];
+        }
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, array(
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HEADER => false,
+            CURLOPT_NOBODY => false,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_CONNECTTIMEOUT_MS => 800,
+            CURLOPT_TIMEOUT_MS => 1500,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false,
+        ));
+        curl_exec($ch);
+        $errno = curl_errno($ch);
+        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $reachable = $errno === 0 && $httpCode > 0 && $httpCode < 500;
+        $this->connection_request_reachability[$url] = $reachable;
+        return $reachable;
     }
 
     private function try_refresh_virtual_parameters($genieacs, $device_id)

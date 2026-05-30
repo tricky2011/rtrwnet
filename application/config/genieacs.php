@@ -17,6 +17,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 $config['genieacs_timeout'] = (int) (getenv('GENIEACS_TIMEOUT') ?: 20);
 $config['genieacs_verify_ssl'] = getenv('GENIEACS_VERIFY_SSL') === '1';
+$config['genieacs_sync_refresh_virtual_parameters'] = getenv('GENIEACS_SYNC_REFRESH_VIRTUAL_PARAMETERS') === '1';
+$config['genieacs_connection_request_online_check'] = getenv('GENIEACS_CONNECTION_REQUEST_ONLINE_CHECK') !== '0';
 
 /*
 |--------------------------------------------------------------------------

@@ -694,6 +694,15 @@ class Billing_automation_service
         $activation_skipped_static = false;
         $activation_skipped_mikrotik = false;
         $cashflow_logged = false;
+        $has_remaining_isolir_block = false;
+        $isolir_release = array(
+            'attempted' => false,
+            'success' => false,
+            'released' => false,
+            'removed' => 0,
+            'skipped' => true,
+            'message' => 'Release isolir belum dijalankan.',
+        );
 
         if ($new_status === 'paid') {
             $username = trim((string) ($invoice['username'] ?? ''));
@@ -704,21 +713,25 @@ class Billing_automation_service
                 $username = $this->CI->billing_automation_model->get_customer_current_pppoe_username((int) $invoice['customer_id']);
             }
 
-            $customer_update = $this->CI->billing_automation_model->update_customer_status((int) $invoice['customer_id'], 'active');
-            if (empty($customer_update['success'])) {
-                $this->CI->db->trans_rollback();
-                return array(
-                    'success' => false,
-                    'message' => 'Update customer status gagal.',
-                    'error' => $customer_update['error'],
-                );
+            $has_remaining_isolir_block = $this->CI->billing_automation_model
+                ->customer_has_isolir_blocking_invoice((int) $invoice['customer_id']);
+            if (!$has_remaining_isolir_block) {
+                $customer_update = $this->CI->billing_automation_model->update_customer_status((int) $invoice['customer_id'], 'active');
+                if (empty($customer_update['success'])) {
+                    $this->CI->db->trans_rollback();
+                    return array(
+                        'success' => false,
+                        'message' => 'Update customer status gagal.',
+                        'error' => $customer_update['error'],
+                    );
+                }
             }
 
             // Customer STATIC: mark lunas hanya update DB + cashflow.
             // Aktivasi jaringan static ditangani oleh cron check_static_isolir.
             // Global default: mark lunas tidak mengubah state MikroTik.
             // Jika dibutuhkan, set env BILLING_APPLY_MIKROTIK_ON_MARK_PAID=1.
-            if ($allow_mikrotik_on_mark_paid && !$is_static_customer) {
+            if (!$has_remaining_isolir_block && $allow_mikrotik_on_mark_paid && !$is_static_customer) {
                 $router_id = (int) ($invoice['service_router_id'] ?? 0);
                 if ($username !== '') {
                     $mk_result = $this->activate_customer_in_mikrotik(
@@ -778,16 +791,33 @@ class Billing_automation_service
 
         $this->CI->db->trans_commit();
 
+        if ($new_status === 'paid') {
+            $isolir_release = $this->release_customer_from_isolir_if_fully_paid($invoice);
+        }
+
         $wa_result = array('queued' => false, 'skipped' => true);
         if ($new_status === 'paid') {
             $wa_result = $this->queue_payment_received_whatsapp($invoice, $total_amount, $payment_date);
         }
 
+        $message = $new_status === 'paid'
+            ? ($has_remaining_isolir_block
+                ? 'Pembayaran lunas untuk invoice ini.'
+                : 'Pembayaran lunas, customer aktif kembali.')
+            : 'Pembayaran tercatat (partially paid).';
+        if ($new_status === 'paid') {
+            if (!empty($isolir_release['released'])) {
+                $message .= ' Release isolir otomatis berhasil.';
+            } elseif (!empty($isolir_release['attempted']) && empty($isolir_release['success'])) {
+                $message .= ' Release isolir otomatis gagal: ' . (string) ($isolir_release['message'] ?? 'unknown');
+            } elseif (!empty($isolir_release['skipped']) && !empty($isolir_release['message'])) {
+                $message .= ' ' . (string) $isolir_release['message'];
+            }
+        }
+
         return array(
             'success' => true,
-            'message' => $new_status === 'paid'
-                ? 'Pembayaran lunas, customer aktif kembali.'
-                : 'Pembayaran tercatat (partially paid).',
+            'message' => $message,
             'data' => array(
                 'invoice_id' => $invoice_id,
                 'payment_id' => (int) $payment_result['id'],
@@ -798,10 +828,377 @@ class Billing_automation_service
                 'activated' => $activation_done,
                 'activation_skipped_static' => $activation_skipped_static,
                 'activation_skipped_mikrotik' => $activation_skipped_mikrotik,
+                'has_remaining_isolir_block' => $has_remaining_isolir_block,
+                'isolir_release' => $isolir_release,
                 'cashflow_logged' => $cashflow_logged,
                 'wa_queued' => !empty($wa_result['queued']),
             ),
         );
+    }
+
+    private function release_customer_from_isolir_if_fully_paid(array $invoice)
+    {
+        $customer_id = (int) ($invoice['customer_id'] ?? 0);
+        $result = array(
+            'attempted' => false,
+            'success' => false,
+            'released' => false,
+            'removed' => 0,
+            'skipped' => true,
+            'message' => '',
+        );
+
+        if ($customer_id <= 0) {
+            $result['message'] = 'Customer tidak valid, release isolir dilewati.';
+            return $result;
+        }
+
+        if ($this->CI->billing_automation_model->customer_has_isolir_blocking_invoice($customer_id)) {
+            $result['message'] = 'Customer masih punya invoice jatuh tempo belum lunas, isolir belum dilepas.';
+            return $result;
+        }
+
+        $context = $this->build_isolir_release_context($customer_id, $invoice);
+        $router_id = (int) ($context['router_id'] ?? 0);
+        if ($router_id <= 0) {
+            $result['message'] = 'Router customer tidak ditemukan, release isolir dilewati.';
+            log_message('error', '[BILLING_RELEASE_ISOLIR] router_id kosong customer_id=' . $customer_id);
+            return $result;
+        }
+
+        $release = $this->remove_customer_isolir_entries(
+            $router_id,
+            (string) ($context['username'] ?? ''),
+            (array) ($context['ips'] ?? array()),
+            (array) ($context['comment_needles'] ?? array())
+        );
+
+        $release['attempted'] = true;
+        $release['skipped'] = false;
+
+        if (!empty($release['success'])) {
+            $release['released'] = true;
+            $release['message'] = (string) ($release['message'] ?? 'Release isolir berhasil.');
+        } else {
+            log_message(
+                'error',
+                '[BILLING_RELEASE_ISOLIR] gagal customer_id=' . $customer_id
+                . ' router_id=' . $router_id
+                . ' username=' . (string) ($context['username'] ?? '')
+                . ' message=' . (string) ($release['message'] ?? 'unknown')
+            );
+        }
+
+        return $release;
+    }
+
+    private function build_isolir_release_context($customer_id, array $invoice)
+    {
+        $customer_id = (int) $customer_id;
+        $customer = $this->get_customer_release_row($customer_id);
+
+        $username = trim((string) ($invoice['username'] ?? ''));
+        if ($username === '') {
+            $username = trim((string) ($invoice['customer_pppoe_username'] ?? ''));
+        }
+        if ($username === '') {
+            $username = trim((string) ($customer['pppoe_username'] ?? $customer['username'] ?? ''));
+        }
+        if ($username === '') {
+            $username = $this->CI->billing_automation_model->get_customer_current_pppoe_username($customer_id);
+        }
+
+        $router_id = (int) ($invoice['service_router_id'] ?? $invoice['router_id'] ?? 0);
+        if ($router_id <= 0) {
+            $router_id = (int) ($customer['router_id'] ?? 0);
+        }
+        if ($router_id <= 0) {
+            $router_id = (int) $this->CI->billing_automation_model->get_customer_router_id($customer_id, $username);
+        }
+
+        $ips = array(
+            $invoice['service_ip_address'] ?? '',
+            $invoice['customer_ip_address'] ?? '',
+            $customer['ip_address'] ?? '',
+            $this->CI->billing_automation_model->get_customer_primary_ip($customer_id),
+        );
+
+        $comment_needles = array(
+            $username,
+            $invoice['customer_code'] ?? '',
+            $customer['customer_code'] ?? '',
+        );
+
+        return array(
+            'customer_id' => $customer_id,
+            'router_id' => $router_id,
+            'username' => $username,
+            'ips' => $this->unique_ipv4_list($ips),
+            'comment_needles' => $this->unique_comment_needles($comment_needles),
+        );
+    }
+
+    private function get_customer_release_row($customer_id)
+    {
+        $customer_id = (int) $customer_id;
+        if ($customer_id <= 0 || !$this->CI->db->table_exists('customers')) {
+            return array();
+        }
+
+        $fields = $this->CI->db->list_fields('customers');
+        $select = array('id');
+        foreach (array('customer_code', 'full_name', 'pppoe_username', 'username', 'router_id', 'ip_address') as $field) {
+            if (in_array($field, $fields, true)) {
+                $select[] = $field;
+            }
+        }
+
+        return (array) $this->CI->db
+            ->select(implode(',', $select))
+            ->from('customers')
+            ->where('id', $customer_id)
+            ->limit(1)
+            ->get()
+            ->row_array();
+    }
+
+    private function remove_customer_isolir_entries($router_id, $username, array $ips, array $comment_needles)
+    {
+        $router_id = (int) $router_id;
+        $username = trim((string) $username);
+        $ips = $this->unique_ipv4_list($ips);
+        $comment_needles = $this->unique_comment_needles($comment_needles);
+
+        if ($router_id <= 0) {
+            return array('success' => false, 'message' => 'router_id tidak valid.', 'removed' => 0);
+        }
+
+        $connect = $this->CI->mikrotikmanager->connectByRouterId($router_id);
+        if (empty($connect['success'])) {
+            return array(
+                'success' => false,
+                'message' => (string) ($connect['message'] ?? 'Koneksi router gagal.'),
+                'removed' => 0,
+            );
+        }
+
+        try {
+            if ($username !== '') {
+                $ips = $this->merge_ipv4_lists($ips, $this->collect_ppp_active_ips_for_username($username));
+                $ips = $this->merge_ipv4_lists($ips, $this->collect_ppp_secret_ips_for_username($username));
+            }
+
+            $list = $this->CI->mikrotikmanager->command('/ip/firewall/address-list/print', array(
+                '?list' => $this->isolir_address_list,
+                '.proplist' => '.id,list,address,comment',
+            ));
+            if (empty($list['success'])) {
+                return array(
+                    'success' => false,
+                    'message' => (string) ($list['message'] ?? 'Gagal membaca address-list isolir.'),
+                    'removed' => 0,
+                );
+            }
+
+            $removed = 0;
+            foreach ((array) ($list['data'] ?? array()) as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+
+                $address = $this->normalize_ipv4((string) ($row['address'] ?? ''));
+                $comment = (string) ($row['comment'] ?? '');
+                $matches_ip = $address !== '' && in_array($address, $ips, true);
+                $matches_comment = $this->comment_matches_any($comment, $comment_needles);
+                if (!$matches_ip && !$matches_comment) {
+                    continue;
+                }
+
+                $id = $this->extract_router_row_id($row);
+                if ($id === '') {
+                    continue;
+                }
+
+                $remove = $this->CI->mikrotikmanager->command('/ip/firewall/address-list/remove', array('.id' => $id));
+                if (empty($remove['success'])) {
+                    return array(
+                        'success' => false,
+                        'message' => (string) ($remove['message'] ?? 'Gagal remove address-list isolir.'),
+                        'removed' => $removed,
+                    );
+                }
+                $removed++;
+            }
+
+            return array(
+                'success' => true,
+                'message' => $removed > 0
+                    ? ('Berhasil menghapus ' . $removed . ' entry address-list isolir.')
+                    : 'Tidak ada entry address-list isolir yang perlu dihapus.',
+                'removed' => $removed,
+                'router_id' => $router_id,
+                'ips' => $ips,
+            );
+        } finally {
+            $this->CI->mikrotikmanager->disconnect();
+        }
+    }
+
+    private function collect_ppp_active_ips_for_username($username)
+    {
+        $username = trim((string) $username);
+        if ($username === '') {
+            return array();
+        }
+
+        $rows = array();
+        $active = $this->CI->mikrotikmanager->command('/ppp/active/print', array(
+            '?name' => $username,
+            '.proplist' => 'name,address',
+        ));
+        if (!empty($active['success'])) {
+            $rows = (array) ($active['data'] ?? array());
+        }
+
+        if (empty($rows)) {
+            $scan = $this->CI->mikrotikmanager->command('/ppp/active/print', array(
+                '.proplist' => 'name,address',
+            ));
+            if (!empty($scan['success'])) {
+                $rows = (array) ($scan['data'] ?? array());
+            }
+        }
+
+        $ips = array();
+        foreach ($rows as $row) {
+            if (!is_array($row) || !$this->same_router_name((string) ($row['name'] ?? ''), $username)) {
+                continue;
+            }
+            $ips[] = (string) ($row['address'] ?? '');
+        }
+
+        return $this->unique_ipv4_list($ips);
+    }
+
+    private function collect_ppp_secret_ips_for_username($username)
+    {
+        $username = trim((string) $username);
+        if ($username === '') {
+            return array();
+        }
+
+        $rows = array();
+        $secret = $this->CI->mikrotikmanager->command('/ppp/secret/print', array(
+            '?name' => $username,
+            '.proplist' => 'name,remote-address',
+        ));
+        if (!empty($secret['success'])) {
+            $rows = (array) ($secret['data'] ?? array());
+        }
+
+        if (empty($rows)) {
+            $scan = $this->CI->mikrotikmanager->command('/ppp/secret/print', array(
+                '.proplist' => 'name,remote-address',
+            ));
+            if (!empty($scan['success'])) {
+                $rows = (array) ($scan['data'] ?? array());
+            }
+        }
+
+        $ips = array();
+        foreach ($rows as $row) {
+            if (!is_array($row) || !$this->same_router_name((string) ($row['name'] ?? ''), $username)) {
+                continue;
+            }
+            $ips[] = (string) ($row['remote-address'] ?? '');
+        }
+
+        return $this->unique_ipv4_list($ips);
+    }
+
+    private function unique_ipv4_list(array $ips)
+    {
+        $unique = array();
+        foreach ($ips as $ip) {
+            $ip = $this->normalize_ipv4((string) $ip);
+            if ($ip !== '') {
+                $unique[$ip] = $ip;
+            }
+        }
+
+        return array_values($unique);
+    }
+
+    private function merge_ipv4_lists(array $base, array $extra)
+    {
+        return $this->unique_ipv4_list(array_merge($base, $extra));
+    }
+
+    private function normalize_ipv4($value)
+    {
+        $value = trim((string) $value);
+        if (strpos($value, '/') !== false) {
+            $value = substr($value, 0, strpos($value, '/'));
+        }
+
+        return filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) ? $value : '';
+    }
+
+    private function unique_comment_needles(array $values)
+    {
+        $unique = array();
+        foreach ($values as $value) {
+            $value = trim((string) $value);
+            if ($value === '' || strlen($value) < 3) {
+                continue;
+            }
+            $key = strtolower($value);
+            $unique[$key] = $value;
+        }
+
+        return array_values($unique);
+    }
+
+    private function comment_matches_any($comment, array $needles)
+    {
+        $comment = strtolower((string) $comment);
+        if ($comment === '') {
+            return false;
+        }
+
+        foreach ($needles as $needle) {
+            $needle = strtolower(trim((string) $needle));
+            if ($needle === '') {
+                continue;
+            }
+
+            $pattern = '/(^|[^a-z0-9])' . preg_quote($needle, '/') . '($|[^a-z0-9])/i';
+            if (preg_match($pattern, $comment)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function same_router_name($a, $b)
+    {
+        return strtolower(trim((string) $a)) === strtolower(trim((string) $b));
+    }
+
+    private function extract_router_row_id(array $row)
+    {
+        foreach (array('.id', '=.id', 'id') as $key) {
+            if (!isset($row[$key])) {
+                continue;
+            }
+            $id = trim((string) $row[$key]);
+            if ($id !== '') {
+                return $id;
+            }
+        }
+
+        return '';
     }
 
     private function queue_invoice_created_whatsapp($invoice_id, array $customer, array $invoice_data)

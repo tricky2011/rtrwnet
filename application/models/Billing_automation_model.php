@@ -562,9 +562,15 @@ class Billing_automation_model extends CI_Model
         $customer_profile_select = $this->table_has_column('customers', 'profile_id')
             ? 'c.profile_id as customer_profile_id'
             : 'NULL as customer_profile_id';
+        $customer_code_select = $this->table_has_column('customers', 'customer_code')
+            ? 'c.customer_code as customer_code'
+            : "'' as customer_code";
         $customer_pppoe_select = $this->table_has_column('customers', 'pppoe_username')
             ? 'c.pppoe_username as customer_pppoe_username'
             : "'' as customer_pppoe_username";
+        $customer_ip_select = $this->table_has_column('customers', 'ip_address')
+            ? 'c.ip_address as customer_ip_address'
+            : "'' as customer_ip_address";
         $customer_connection_type_select = $this->table_has_column('customers', 'connection_type')
             ? 'c.connection_type as customer_connection_type'
             : "'' as customer_connection_type";
@@ -575,7 +581,7 @@ class Billing_automation_model extends CI_Model
             ? 'c.notes as customer_notes'
             : "'' as customer_notes";
         $invoice = $this->db
-            ->select('i.*, c.id as customer_id, c.status as customer_status, ' . $customer_profile_select . ', ' . $username_expr . ' as username, ' . $customer_pppoe_select . ', ' . $customer_connection_type_select . ', ' . $customer_full_name_select . ', ' . $customer_notes_select, false)
+            ->select('i.*, c.id as customer_id, c.status as customer_status, ' . $customer_profile_select . ', ' . $customer_code_select . ', ' . $username_expr . ' as username, ' . $customer_pppoe_select . ', ' . $customer_ip_select . ', ' . $customer_connection_type_select . ', ' . $customer_full_name_select . ', ' . $customer_notes_select, false)
             ->from('invoices i')
             ->join('customers c', 'c.id = i.customer_id', 'inner')
             ->where('i.id', $invoice_id)
@@ -644,6 +650,11 @@ class Billing_automation_model extends CI_Model
             $invoice['service_router_id'] = (int) $service['router_id'];
         } elseif ($this->invoices_has_column('router_id')) {
             $invoice['service_router_id'] = (int) ($invoice['router_id'] ?? 0);
+        }
+
+        $invoice['service_ip_address'] = '';
+        if (!empty($service['ip_address'])) {
+            $invoice['service_ip_address'] = trim((string) $service['ip_address']);
         }
 
         return $invoice;
@@ -738,6 +749,84 @@ class Billing_automation_model extends CI_Model
             'success' => (bool) $ok,
             'error' => $ok ? null : $this->db->error(),
         );
+    }
+
+    public function customer_has_unpaid_invoice_balance($customer_id)
+    {
+        $customer_id = (int) $customer_id;
+        if ($customer_id <= 0 || !$this->db->table_exists('invoices')) {
+            return false;
+        }
+
+        $invoice_fields = $this->db->list_fields('invoices');
+        $qb = $this->db
+            ->from('invoices')
+            ->where('customer_id', $customer_id);
+
+        if (in_array('status', $invoice_fields, true)) {
+            $qb->where("LOWER(COALESCE(status, '')) NOT IN ('paid','void','cancelled','canceled')", null, false);
+        }
+
+        if (in_array('balance_amount', $invoice_fields, true)) {
+            $qb->where('balance_amount >', 0);
+        } elseif (in_array('total_amount', $invoice_fields, true) && in_array('paid_amount', $invoice_fields, true)) {
+            $qb->where('total_amount > paid_amount', null, false);
+        } elseif (in_array('amount', $invoice_fields, true) && in_array('paid_amount', $invoice_fields, true)) {
+            $qb->where('amount > paid_amount', null, false);
+        } elseif (in_array('total_amount', $invoice_fields, true)) {
+            $qb->where('total_amount >', 0);
+        } elseif (in_array('amount', $invoice_fields, true)) {
+            $qb->where('amount >', 0);
+        }
+
+        return $qb->count_all_results() > 0;
+    }
+
+    public function customer_has_isolir_blocking_invoice($customer_id, $today = null, $grace_days = 5)
+    {
+        $customer_id = (int) $customer_id;
+        if ($customer_id <= 0 || !$this->db->table_exists('invoices')) {
+            return false;
+        }
+
+        $today = $today ? (string) $today : date('Y-m-d');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $today)) {
+            $today = date('Y-m-d');
+        }
+        $grace_days = max(0, (int) $grace_days);
+        $cutoff = date('Y-m-d', strtotime($today . ' -' . $grace_days . ' day'));
+
+        $invoice_fields = $this->db->list_fields('invoices');
+        $has_status = in_array('status', $invoice_fields, true);
+        $has_due_date = in_array('due_date', $invoice_fields, true);
+
+        $qb = $this->db
+            ->from('invoices')
+            ->where('customer_id', $customer_id);
+
+        if (in_array('balance_amount', $invoice_fields, true)) {
+            $qb->where('balance_amount >', 0);
+        } elseif (in_array('total_amount', $invoice_fields, true) && in_array('paid_amount', $invoice_fields, true)) {
+            $qb->where('total_amount > paid_amount', null, false);
+        } elseif (in_array('amount', $invoice_fields, true) && in_array('paid_amount', $invoice_fields, true)) {
+            $qb->where('amount > paid_amount', null, false);
+        }
+
+        if ($has_status && $has_due_date) {
+            $qb->group_start()
+                ->where_in('LOWER(status)', array('overdue'))
+                ->or_group_start()
+                    ->where_in('LOWER(status)', array('issued', 'partially_paid', 'unpaid', 'pending'))
+                    ->where('due_date <=', $cutoff)
+                ->group_end()
+            ->group_end();
+        } elseif ($has_status) {
+            $qb->where_in('LOWER(status)', array('overdue'));
+        } elseif ($has_due_date) {
+            $qb->where('due_date <=', $cutoff);
+        }
+
+        return $qb->count_all_results() > 0;
     }
 
     private function sanitize_payment_method($method)
