@@ -255,6 +255,29 @@ class Genieacs
         return array('success' => true, 'message' => 'Task refresh virtual parameter dikirim.');
     }
 
+    public function refreshObject($deviceId, $objectName)
+    {
+        $deviceId = trim((string) $deviceId);
+        $objectName = trim((string) $objectName);
+        if ($deviceId === '' || $objectName === '') {
+            return array('success' => false, 'message' => 'Device ID/objectName kosong.');
+        }
+
+        $resp = $this->request(
+            'POST',
+            $this->taskPath($deviceId),
+            array('name' => 'refreshObject', 'objectName' => $objectName)
+        );
+        if (empty($resp['success'])) {
+            return array(
+                'success' => false,
+                'message' => (string) ($resp['message'] ?? 'Gagal refresh object.'),
+            );
+        }
+
+        return array('success' => true, 'message' => 'Task refresh object dikirim.');
+    }
+
     public function extractSerial(array $row)
     {
         $candidates = array(
@@ -313,16 +336,31 @@ class Genieacs
 
     public function extractSsid(array $row)
     {
-        return $this->pickByPaths($row, array(
-            'Device.WiFi.SSID.*.SSID._value',
+        $paths = array(
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID._value',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.X_ZTE-COM_SSID._value',
+            'Device.WiFi.SSID.1.SSID._value',
             'InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.SSID._value',
             'InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.X_ZTE-COM_SSID._value',
-        ));
+            'Device.WiFi.SSID.*.SSID._value',
+        );
+
+        foreach ($paths as $path) {
+            $values = $this->valuesByPath($row, $path);
+            foreach ($values as $value) {
+                $candidate = $this->toScalarString($value);
+                if ($this->isUsableSsid($candidate)) {
+                    return $candidate;
+                }
+            }
+        }
+
+        return '';
     }
 
     public function extractWifiPassword(array $row)
     {
-        return $this->pickByPaths($row, array(
+        $paths = array(
             'VirtualParameters.WlanPassword._value',
             'VirtualParameters.wlanPassword._value',
             'VirtualParameters.WLANPassword._value',
@@ -331,13 +369,41 @@ class Genieacs
             'InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.KeyPassphrase._value',
             'InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.WPAKey.*.WPAKey._value',
             'InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.WPAKey._value',
-            'InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.X_CT-COM_WPSKeyWord._value',
-            'InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.X_CMCC_WPSKeyWord._value',
-            'InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.X_ZTE-COM_WPSKeyWord._value',
             'Device.WiFi.AccessPoint.*.Security.KeyPassphrase._value',
             'Device.WiFi.AccessPoint.*.Security.PreSharedKey._value',
-            'InternetGatewayDevice.X_CMCC_UserInfo.Password._value',
-        ));
+        );
+
+        foreach ($paths as $path) {
+            $values = $this->valuesByPath($row, $path);
+            foreach ($values as $value) {
+                $candidate = $this->toScalarString($value);
+                if ($this->isValidWifiPassword($candidate)) {
+                    return $candidate;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    public function isValidWifiPassword($value)
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return false;
+        }
+
+        $lower = strtolower($value);
+        if (in_array($lower, array('null', 'none', 'undefined', 'n/a'), true)) {
+            return false;
+        }
+
+        $length = strlen($value);
+        if ($length < 8 || $length > 64) {
+            return false;
+        }
+
+        return true;
     }
 
     public function extractPppoeUsername(array $row)
@@ -441,6 +507,25 @@ class Genieacs
             }
         }
         return '';
+    }
+
+    protected function isUsableSsid($value)
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return false;
+        }
+
+        $upper = strtoupper($value);
+        if (preg_match('/^SSID[0-9]*$/', $upper)) {
+            return false;
+        }
+
+        if (in_array($upper, array('NULL', 'NONE', 'N/A'), true)) {
+            return false;
+        }
+
+        return true;
     }
 
     protected function pickByPaths(array $row, array $paths)

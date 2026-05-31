@@ -397,7 +397,7 @@ class Ont extends MY_Controller
             $needsVirtualRefresh = $allowVirtualRefresh
                 && $isOnline
                 && $deviceId !== ''
-                && ($opticalRxDbm === '' || $wifiPassword === '' || $pppoeUsername === '');
+                && ($ssid === '' || $opticalRxDbm === '' || $wifiPassword === '' || $pppoeUsername === '');
 
             if ($needsVirtualRefresh) {
                 $refreshedRow = $this->try_refresh_virtual_parameters($genieacs, $deviceId);
@@ -506,6 +506,9 @@ class Ont extends MY_Controller
                         if ($f === 'ont_username' && $this->is_likely_ont_identifier((string) $existing[$f], $serial)) {
                             continue;
                         }
+                        if ($f === 'wifi_password' && method_exists($genieacs, 'isValidWifiPassword') && !$genieacs->isValidWifiPassword((string) $existing[$f])) {
+                            continue;
+                        }
                         $payload[$f] = $existing[$f];
                     }
                 }
@@ -578,7 +581,12 @@ class Ont extends MY_Controller
             ? 'name'
             : (in_array('router_name', $fields, true) ? 'router_name' : 'id');
 
-        $qb = $this->db->select('id,' . $name_col . ' AS name', false)->from('routers');
+        $select = 'id,' . $name_col . ' AS name';
+        if (in_array('acs_nbi_url', $fields, true)) {
+            $select .= ',acs_nbi_url';
+        }
+
+        $qb = $this->db->select($select, false)->from('routers');
         if (in_array('is_active', $fields, true)) {
             $qb->where('is_active', 1);
         } elseif (in_array('status', $fields, true)) {
@@ -590,13 +598,28 @@ class Ont extends MY_Controller
 
         $rows = $qb->order_by($name_col, 'ASC')->get()->result_array();
         $ids = array();
+        $seen_acs = array();
         foreach ($rows as $r) {
             $id = (int) ($r['id'] ?? 0);
             if ($id > 0) {
+                $acs = $this->normalize_acs_url((string) ($r['acs_nbi_url'] ?? ''));
+                if ($acs !== '') {
+                    if (isset($seen_acs[$acs])) {
+                        log_message('warning', '[ONT][SYNC] Router #' . $id . ' dilewati karena ACS NBI URL sama dengan router #' . $seen_acs[$acs] . '.');
+                        continue;
+                    }
+                    $seen_acs[$acs] = $id;
+                }
                 $ids[] = $id;
             }
         }
         return $ids;
+    }
+
+    private function normalize_acs_url($url)
+    {
+        $url = strtolower(trim((string) $url));
+        return rtrim($url, '/');
     }
 
     private function get_router_row($router_id)
@@ -754,6 +777,12 @@ class Ont extends MY_Controller
             return array();
         }
 
+        if (method_exists($genieacs, 'refreshObject')) {
+            foreach (array('InternetGatewayDevice.LANDevice.1.WLANConfiguration', 'Device.WiFi') as $objectName) {
+                $genieacs->refreshObject($device_id, $objectName);
+            }
+        }
+
         $refreshNames = array(
             'RXPower',
             'WlanPassword',
@@ -781,16 +810,40 @@ class Ont extends MY_Controller
             'InternetGatewayDevice.WANDevice.1.X_CU_WANEPONInterfaceConfig.OpticalTransceiver.RXPower',
             'Device.PON.Interface.1.OpticalSignalLevel',
             'Device.PON.Interface.1.RXPower',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.X_ZTE-COM_SSID',
             'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase',
             'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.KeyPassphrase',
             'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.PreSharedKey',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.SSID',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.X_ZTE-COM_SSID',
             'InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.KeyPassphrase',
             'InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.PreSharedKey.1.KeyPassphrase',
             'InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.PreSharedKey.1.PreSharedKey',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.3.SSID',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.3.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.3.PreSharedKey.1.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.4.SSID',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.4.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.4.PreSharedKey.1.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.SSID',
             'InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.KeyPassphrase',
             'InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.PreSharedKey.1.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.6.SSID',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.6.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.6.PreSharedKey.1.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.7.SSID',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.7.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.7.PreSharedKey.1.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.8.SSID',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.8.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.8.PreSharedKey.1.KeyPassphrase',
+            'Device.WiFi.SSID.1.SSID',
+            'Device.WiFi.SSID.2.SSID',
             'Device.WiFi.AccessPoint.1.Security.KeyPassphrase',
             'Device.WiFi.AccessPoint.1.Security.PreSharedKey',
+            'Device.WiFi.AccessPoint.2.Security.KeyPassphrase',
+            'Device.WiFi.AccessPoint.2.Security.PreSharedKey',
         );
 
         $refresh = $genieacs->refreshVirtualParameters($device_id, $refreshNames);
@@ -828,16 +881,40 @@ class Ont extends MY_Controller
             'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.4.WANPPPConnection.1.Username',
             'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.5.WANPPPConnection.1.ExternalIPAddress',
             'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.5.WANPPPConnection.1.Username',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.X_ZTE-COM_SSID',
             'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase',
             'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.KeyPassphrase',
             'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.PreSharedKey',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.SSID',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.X_ZTE-COM_SSID',
             'InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.KeyPassphrase',
             'InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.PreSharedKey.1.KeyPassphrase',
             'InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.PreSharedKey.1.PreSharedKey',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.3.SSID',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.3.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.3.PreSharedKey.1.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.4.SSID',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.4.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.4.PreSharedKey.1.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.SSID',
             'InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.KeyPassphrase',
             'InternetGatewayDevice.LANDevice.1.WLANConfiguration.5.PreSharedKey.1.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.6.SSID',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.6.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.6.PreSharedKey.1.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.7.SSID',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.7.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.7.PreSharedKey.1.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.8.SSID',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.8.KeyPassphrase',
+            'InternetGatewayDevice.LANDevice.1.WLANConfiguration.8.PreSharedKey.1.KeyPassphrase',
+            'Device.WiFi.SSID.1.SSID',
+            'Device.WiFi.SSID.2.SSID',
             'Device.WiFi.AccessPoint.1.Security.KeyPassphrase',
             'Device.WiFi.AccessPoint.1.Security.PreSharedKey',
+            'Device.WiFi.AccessPoint.2.Security.KeyPassphrase',
+            'Device.WiFi.AccessPoint.2.Security.PreSharedKey',
         ));
 
         if (empty($device['success']) || empty($device['data']) || !is_array($device['data'])) {
