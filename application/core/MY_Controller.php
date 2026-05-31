@@ -71,7 +71,16 @@ class MY_Controller extends CI_Controller
 
         $this->is_router_scoped_user = true;
 
-        $scope_from_session = (int) $this->session->userdata('router_scope_id');
+        $scope_from_session = (int) $this->session->userdata('active_router_id');
+        if ($scope_from_session <= 0) {
+            $scope_from_session = (int) $this->session->userdata('active_router');
+        }
+        if ($scope_from_session <= 0) {
+            $scope_from_session = (int) $this->session->userdata('dashboard_router_id');
+        }
+        if ($scope_from_session <= 0) {
+            $scope_from_session = (int) $this->session->userdata('router_scope_id');
+        }
 
         if (!isset($this->db) || !is_object($this->db)) {
             $this->load->database();
@@ -80,14 +89,7 @@ class MY_Controller extends CI_Controller
         if (!$this->db->table_exists('users')) {
             if ($scope_from_session > 0) {
                 $this->router_scope_id = $scope_from_session;
-            }
-            return;
-        }
-
-        $user_fields = $this->db->list_fields('users');
-        if (!in_array('router_scope_id', $user_fields, true)) {
-            if ($scope_from_session > 0) {
-                $this->router_scope_id = $scope_from_session;
+                $this->session->set_userdata('router_access_ids', array($scope_from_session));
             }
             return;
         }
@@ -97,24 +99,81 @@ class MY_Controller extends CI_Controller
             return;
         }
 
-        $row = $this->db
-            ->select('router_scope_id')
-            ->from('users')
-            ->where('id', $user_id)
-            ->limit(1)
-            ->get()
-            ->row_array();
+        $allowed_router_ids = $this->load_user_router_access_ids($user_id);
+        if (empty($allowed_router_ids) && $scope_from_session > 0) {
+            $allowed_router_ids = array($scope_from_session);
+        }
 
-        $scope_db = (int) ($row['router_scope_id'] ?? 0);
-        if ($scope_db > 0) {
-            $this->router_scope_id = $scope_db;
-            $this->session->set_userdata('router_scope_id', $scope_db);
+        $this->session->set_userdata('router_access_ids', $allowed_router_ids);
+        if (empty($allowed_router_ids)) {
+            $this->router_scope_id = null;
+            $this->session->set_userdata('active_router', null);
+            $this->session->set_userdata('active_router_id', null);
+            $this->session->set_userdata('router_scope_id', null);
+            $this->session->set_userdata('dashboard_router_id', null);
             return;
         }
 
-        if ($scope_from_session > 0) {
-            $this->router_scope_id = $scope_from_session;
+        $allowed_map = array_fill_keys($allowed_router_ids, true);
+        $active_router_id = $scope_from_session > 0 && isset($allowed_map[$scope_from_session])
+            ? $scope_from_session
+            : (int) $allowed_router_ids[0];
+
+        $this->router_scope_id = $active_router_id;
+        $this->session->set_userdata('active_router', $active_router_id);
+        $this->session->set_userdata('active_router_id', $active_router_id);
+        $this->session->set_userdata('router_scope_id', $active_router_id);
+        $this->session->set_userdata('dashboard_router_id', $active_router_id);
+    }
+
+    protected function load_user_router_access_ids($user_id)
+    {
+        $user_id = (int) $user_id;
+        if ($user_id <= 0 || !isset($this->db) || !is_object($this->db) || !$this->db->table_exists('users')) {
+            return array();
         }
+
+        $ids = array();
+        if ($this->db->table_exists('user_router_access') && $this->db->table_exists('routers')) {
+            $this->db
+                ->select('ura.router_id')
+                ->from('user_router_access ura')
+                ->join('routers r', 'r.id = ura.router_id', 'inner')
+                ->where('ura.user_id', $user_id)
+                ->order_by('ura.router_id', 'ASC');
+
+            $router_fields = $this->db->list_fields('routers');
+            if (in_array('is_active', $router_fields, true)) {
+                $this->db->where('r.is_active', 1);
+            } elseif (in_array('status', $router_fields, true)) {
+                $this->db->where('LOWER(r.status)', 'active');
+            }
+
+            $rows = $this->db->get()->result_array();
+            foreach ($rows as $row) {
+                $router_id = (int) ($row['router_id'] ?? 0);
+                if ($router_id > 0) {
+                    $ids[$router_id] = $router_id;
+                }
+            }
+        }
+
+        $user_fields = $this->db->list_fields('users');
+        if (in_array('router_scope_id', $user_fields, true)) {
+            $row = $this->db
+                ->select('router_scope_id')
+                ->from('users')
+                ->where('id', $user_id)
+                ->limit(1)
+                ->get()
+                ->row_array();
+            $legacy_id = (int) ($row['router_scope_id'] ?? 0);
+            if ($legacy_id > 0) {
+                $ids[$legacy_id] = $legacy_id;
+            }
+        }
+
+        return array_values($ids);
     }
 
     protected function applyRouterFilter($table_alias = null, CI_DB_query_builder $qb = null)

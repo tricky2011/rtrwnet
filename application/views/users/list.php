@@ -50,10 +50,14 @@ ob_start();
                             <?php
                             $scope_id = isset($row->router_scope_id) ? (int) $row->router_scope_id : 0;
                             $scope_name = isset($row->router_scope_name) ? trim((string) $row->router_scope_name) : '';
+                            $access_names = isset($row->router_access_names) ? trim((string) $row->router_access_names) : '';
                             $scope_label = 'Belum diatur';
                             $scope_badge = 'text-bg-warning';
 
-                            if ($scope_id > 0) {
+                            if ($access_names !== '') {
+                                $scope_label = $access_names;
+                                $scope_badge = 'text-bg-primary';
+                            } elseif ($scope_id > 0) {
                                 $scope_label = $scope_name !== '' ? $scope_name : ('Router #' . $scope_id);
                                 $scope_badge = 'text-bg-primary';
                             } elseif (strtolower((string) $row->role) === 'superadmin') {

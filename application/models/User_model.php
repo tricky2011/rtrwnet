@@ -33,6 +33,28 @@ class User_model extends CI_Model
             $qb->join('routers r', 'r.id = u.router_scope_id', 'left');
         }
 
+        if ($this->has_router_access_table() && $this->db->table_exists('routers')) {
+            $router_fields = $this->db->list_fields('routers');
+            $router_name_col = in_array('name', $router_fields, true)
+                ? 'name'
+                : (in_array('router_name', $router_fields, true) ? 'router_name' : '');
+
+            if ($router_name_col !== '') {
+                $subquery = "
+                    SELECT
+                        ura.user_id,
+                        GROUP_CONCAT(ura.router_id ORDER BY r.`{$router_name_col}` SEPARATOR ',') AS router_access_ids,
+                        GROUP_CONCAT(r.`{$router_name_col}` ORDER BY r.`{$router_name_col}` SEPARATOR ', ') AS router_access_names
+                    FROM user_router_access ura
+                    INNER JOIN routers r ON r.id = ura.router_id
+                    GROUP BY ura.user_id
+                ";
+                $qb
+                    ->select('ra.router_access_ids, ra.router_access_names', false)
+                    ->join('(' . $subquery . ') ra', 'ra.user_id = u.id', 'left', false);
+            }
+        }
+
         if ($exclude_superadmin) {
             $qb->where('u.role !=', 'superadmin');
         }
@@ -166,6 +188,87 @@ class User_model extends CI_Model
         return $qb->update($this->table, array('status' => 'inactive'));
     }
 
+    public function sync_router_access($user_id, array $router_ids)
+    {
+        $user_id = (int) $user_id;
+        if ($user_id <= 0 || !$this->db->table_exists($this->table)) {
+            return false;
+        }
+
+        $clean_ids = array();
+        foreach ($router_ids as $router_id) {
+            $router_id = (int) $router_id;
+            if ($router_id > 0) {
+                $clean_ids[$router_id] = $router_id;
+            }
+        }
+        $clean_ids = array_values($clean_ids);
+
+        if ($this->has_router_scope_column()) {
+            $primary = !empty($clean_ids) ? (int) $clean_ids[0] : null;
+            $this->db
+                ->where('id', $user_id)
+                ->update($this->table, array('router_scope_id' => $primary));
+        }
+
+        if (!$this->has_router_access_table()) {
+            return true;
+        }
+
+        $this->db->where('user_id', $user_id)->delete('user_router_access');
+        foreach ($clean_ids as $router_id) {
+            $this->db->insert('user_router_access', array(
+                'user_id' => $user_id,
+                'router_id' => (int) $router_id,
+                'created_at' => date('Y-m-d H:i:s'),
+            ));
+        }
+
+        return true;
+    }
+
+    public function get_router_access_ids($user_id, $include_legacy_scope = true)
+    {
+        $user_id = (int) $user_id;
+        if ($user_id <= 0 || !$this->db->table_exists($this->table)) {
+            return array();
+        }
+
+        $ids = array();
+        if ($this->has_router_access_table()) {
+            $rows = $this->db
+                ->select('router_id')
+                ->from('user_router_access')
+                ->where('user_id', $user_id)
+                ->order_by('router_id', 'ASC')
+                ->get()
+                ->result_array();
+
+            foreach ($rows as $row) {
+                $router_id = (int) ($row['router_id'] ?? 0);
+                if ($router_id > 0) {
+                    $ids[$router_id] = $router_id;
+                }
+            }
+        }
+
+        if ($include_legacy_scope && $this->has_router_scope_column()) {
+            $row = $this->db
+                ->select('router_scope_id')
+                ->from($this->table)
+                ->where('id', $user_id)
+                ->limit(1)
+                ->get()
+                ->row_array();
+            $legacy_id = (int) ($row['router_scope_id'] ?? 0);
+            if ($legacy_id > 0) {
+                $ids[$legacy_id] = $legacy_id;
+            }
+        }
+
+        return array_values($ids);
+    }
+
     private function apply_tenant_scope(CI_DB_query_builder &$qb)
     {
         // Single-install mode: no tenant scope.
@@ -184,6 +287,11 @@ class User_model extends CI_Model
     public function has_router_scope_column()
     {
         return $this->column_exists('router_scope_id');
+    }
+
+    public function has_router_access_table()
+    {
+        return $this->db->table_exists('user_router_access');
     }
 
     public function get_active_routers($scope_router_id = null)
@@ -210,9 +318,24 @@ class User_model extends CI_Model
             $qb->where('LOWER(status)', 'active');
         }
 
-        $scope_router_id = (int) $scope_router_id;
-        if ($scope_router_id > 0) {
-            $qb->where('id', $scope_router_id);
+        if (is_array($scope_router_id)) {
+            $scope_ids = array();
+            foreach ($scope_router_id as $id) {
+                $id = (int) $id;
+                if ($id > 0) {
+                    $scope_ids[$id] = $id;
+                }
+            }
+            if (!empty($scope_ids)) {
+                $qb->where_in('id', array_values($scope_ids));
+            } else {
+                $qb->where('1 = 0', null, false);
+            }
+        } else {
+            $scope_router_id = (int) $scope_router_id;
+            if ($scope_router_id > 0) {
+                $qb->where('id', $scope_router_id);
+            }
         }
 
         $rows = $qb

@@ -21,8 +21,15 @@ class Users extends MY_Controller
             return $this->load->view('users/list', array('users' => array()));
         }
 
+        $users = $this->user_model->get_all(!$this->is_superadmin());
+        if (!$this->is_superadmin()) {
+            $users = array_values(array_filter($users, function ($user) {
+                return $this->can_manage_target_user($user);
+            }));
+        }
+
         $this->load->view('users/list', array(
-            'users' => $this->user_model->get_all(!$this->is_superadmin()),
+            'users' => $users,
             'is_superadmin' => $this->is_superadmin(),
         ));
     }
@@ -71,6 +78,7 @@ class Users extends MY_Controller
             $this->session->set_flashdata('error', 'Gagal menambahkan user.');
             return redirect('users/create');
         }
+        $this->user_model->sync_router_access((int) $insert_id, (array) ($router_scope['router_ids'] ?? array()));
 
         $this->session->set_flashdata('success', 'User berhasil ditambahkan.');
         return redirect('users');
@@ -146,6 +154,7 @@ class Users extends MY_Controller
             $this->session->set_flashdata('error', 'Gagal update user.');
             return redirect('users/edit/' . $id);
         }
+        $this->user_model->sync_router_access($id, (array) ($router_scope['router_ids'] ?? array()));
 
         $this->session->set_flashdata('success', 'User berhasil diperbarui.');
         return redirect('users');
@@ -256,7 +265,27 @@ class Users extends MY_Controller
             return true;
         }
 
-        return strtolower((string) $user->role) !== 'superadmin';
+        if (strtolower((string) $user->role) === 'superadmin') {
+            return false;
+        }
+
+        $actor_ids = $this->actor_router_access_ids();
+        if (empty($actor_ids) || empty($user->id)) {
+            return false;
+        }
+        $actor_map = array_fill_keys(array_map('intval', $actor_ids), true);
+        $target_ids = $this->user_model->get_router_access_ids((int) $user->id, true);
+        if (empty($target_ids)) {
+            return false;
+        }
+
+        foreach ($target_ids as $router_id) {
+            if (!isset($actor_map[(int) $router_id])) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function build_router_form_config($user = null)
@@ -265,32 +294,23 @@ class Users extends MY_Controller
         $current_role = normalizeRole((string) $this->session->userdata('role'));
         $is_superadmin = $current_role === 'superadmin';
 
-        $scope_router_id = 0;
-        if (!$is_superadmin) {
-            $scope_router_id = (int) $this->session->userdata('router_scope_id');
-        }
-
         if ($is_superadmin) {
             $router_options = $this->user_model->get_active_routers(null);
-        } elseif ($scope_router_id > 0) {
-            $router_options = $this->user_model->get_active_routers($scope_router_id);
         } else {
-            $router_options = array();
+            $router_options = $this->user_model->get_active_routers($this->actor_router_access_ids());
         }
         $router_count = count($router_options);
 
-        $selected_router_scope_id = null;
-        $posted_router_scope_id = $this->input->post('router_scope_id', true);
-        if ($posted_router_scope_id !== null && trim((string) $posted_router_scope_id) !== '') {
-            $selected_router_scope_id = (int) $posted_router_scope_id;
-        } elseif ($user && isset($user->router_scope_id)) {
-            $existing_scope = (int) $user->router_scope_id;
-            $selected_router_scope_id = $existing_scope > 0 ? $existing_scope : null;
+        $selected_router_scope_ids = $this->posted_router_scope_ids();
+        if (empty($selected_router_scope_ids) && $user && !empty($user->id)) {
+            $selected_router_scope_ids = $this->user_model->get_router_access_ids((int) $user->id, true);
         }
 
-        if ($router_count === 1 && empty($selected_router_scope_id)) {
-            $selected_router_scope_id = (int) $router_options[0]['id'];
+        if ($router_count === 1 && empty($selected_router_scope_ids)) {
+            $selected_router_scope_ids = array((int) $router_options[0]['id']);
         }
+
+        $selected_router_scope_id = !empty($selected_router_scope_ids) ? (int) $selected_router_scope_ids[0] : null;
 
         return array(
             'enabled' => $has_router_scope_column,
@@ -300,6 +320,7 @@ class Users extends MY_Controller
             'router_count' => $router_count,
             'single_router_auto_id' => $router_count === 1 ? (int) $router_options[0]['id'] : null,
             'selected_router_scope_id' => $selected_router_scope_id,
+            'selected_router_scope_ids' => $selected_router_scope_ids,
         );
     }
 
@@ -310,6 +331,7 @@ class Users extends MY_Controller
             return array(
                 'success' => true,
                 'router_scope_id' => null,
+                'router_ids' => array(),
             );
         }
 
@@ -317,18 +339,16 @@ class Users extends MY_Controller
             return array(
                 'success' => true,
                 'router_scope_id' => null,
+                'router_ids' => array(),
             );
         }
 
         $actor_role = normalizeRole((string) $this->session->userdata('role'));
-        $actor_router_scope = (int) $this->session->userdata('router_scope_id');
 
         if ($actor_role === 'superadmin') {
             $router_options = $this->user_model->get_active_routers(null);
-        } elseif ($actor_router_scope > 0) {
-            $router_options = $this->user_model->get_active_routers($actor_router_scope);
         } else {
-            $router_options = array();
+            $router_options = $this->user_model->get_active_routers($this->actor_router_access_ids());
         }
         $router_count = count($router_options);
 
@@ -340,43 +360,86 @@ class Users extends MY_Controller
         }
 
         if ($router_count === 1) {
+            $router_id = (int) $router_options[0]['id'];
             return array(
                 'success' => true,
-                'router_scope_id' => (int) $router_options[0]['id'],
+                'router_scope_id' => $router_id,
+                'router_ids' => array($router_id),
             );
         }
 
-        $posted_router_scope = $this->input->post('router_scope_id', true);
-        $router_scope_id = (int) $posted_router_scope;
-        if ($router_scope_id <= 0) {
+        $posted_router_ids = $this->posted_router_scope_ids();
+        if (empty($posted_router_ids)) {
             return array(
                 'success' => false,
-                'message' => 'Router wajib dipilih.',
-            );
-        }
-
-        if (!$this->user_model->router_exists($router_scope_id, true)) {
-            return array(
-                'success' => false,
-                'message' => 'Router yang dipilih tidak valid atau tidak aktif.',
+                'message' => 'Minimal 1 router wajib dipilih.',
             );
         }
 
         $allowed_ids = array();
         foreach ($router_options as $row) {
-            $allowed_ids[] = (int) ($row['id'] ?? 0);
+            $id = (int) ($row['id'] ?? 0);
+            if ($id > 0) {
+                $allowed_ids[$id] = true;
+            }
         }
 
-        if (!in_array($router_scope_id, $allowed_ids, true)) {
-            return array(
-                'success' => false,
-                'message' => 'Router yang dipilih berada di luar scope Anda.',
-            );
+        $router_ids = array();
+        foreach ($posted_router_ids as $router_id) {
+            $router_id = (int) $router_id;
+            if ($router_id <= 0 || !isset($allowed_ids[$router_id]) || !$this->user_model->router_exists($router_id, true)) {
+                return array(
+                    'success' => false,
+                    'message' => 'Ada router yang dipilih tidak valid, tidak aktif, atau berada di luar scope Anda.',
+                );
+            }
+            $router_ids[$router_id] = $router_id;
         }
+        $router_ids = array_values($router_ids);
 
         return array(
             'success' => true,
-            'router_scope_id' => $router_scope_id,
+            'router_scope_id' => !empty($router_ids) ? (int) $router_ids[0] : null,
+            'router_ids' => $router_ids,
         );
+    }
+
+    private function posted_router_scope_ids()
+    {
+        $posted = $this->input->post('router_scope_ids', true);
+        if ($posted === null) {
+            $posted = array();
+        }
+        if (!is_array($posted)) {
+            $posted = array($posted);
+        }
+
+        $legacy = $this->input->post('router_scope_id', true);
+        if ($legacy !== null && trim((string) $legacy) !== '') {
+            $posted[] = $legacy;
+        }
+
+        $ids = array();
+        foreach ($posted as $router_id) {
+            $router_id = (int) $router_id;
+            if ($router_id > 0) {
+                $ids[$router_id] = $router_id;
+            }
+        }
+
+        return array_values($ids);
+    }
+
+    private function actor_router_access_ids()
+    {
+        $actor_user_id = (int) $this->session->userdata('user_id');
+        $ids = $this->user_model->get_router_access_ids($actor_user_id, true);
+        if (empty($ids)) {
+            $scope_id = (int) $this->session->userdata('router_scope_id');
+            if ($scope_id > 0) {
+                $ids[] = $scope_id;
+            }
+        }
+        return $ids;
     }
 }

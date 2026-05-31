@@ -20,7 +20,8 @@ if ($active_router_id <= 0) {
     $active_router_id = (int) $this->session->userdata('router_scope_id');
 }
 $active_router_options = array();
-if ($role === 'superadmin' && isset($this->db) && is_object($this->db) && $this->db->table_exists('routers')) {
+$can_choose_all_router = ($role === 'superadmin');
+if (in_array($role, array('superadmin', 'admin', 'teknisi'), true) && isset($this->db) && is_object($this->db) && $this->db->table_exists('routers')) {
     $router_fields = $this->db->list_fields('routers');
     if (in_array('id', $router_fields, true)) {
         $router_name_col = in_array('name', $router_fields, true)
@@ -32,8 +33,24 @@ if ($role === 'superadmin' && isset($this->db) && is_object($this->db) && $this-
         if (in_array('is_active', $router_fields, true)) {
             $qb->where('is_active', 1);
         }
+        if ($role !== 'superadmin') {
+            $allowed_router_ids = $this->session->userdata('router_access_ids');
+            $allowed_router_ids = is_array($allowed_router_ids) ? $allowed_router_ids : array();
+            $clean_allowed_ids = array();
+            foreach ($allowed_router_ids as $allowed_router_id) {
+                $allowed_router_id = (int) $allowed_router_id;
+                if ($allowed_router_id > 0) {
+                    $clean_allowed_ids[$allowed_router_id] = $allowed_router_id;
+                }
+            }
+            if (!empty($clean_allowed_ids)) {
+                $qb->where_in('id', array_values($clean_allowed_ids));
+            } else {
+                $qb->where('1 = 0', null, false);
+            }
+        }
         $active_router_options = $qb->order_by($router_name_col, 'ASC')->get()->result_array();
-        $show_router_switcher = !empty($active_router_options);
+        $show_router_switcher = $role === 'superadmin' ? !empty($active_router_options) : count($active_router_options) > 1;
     }
 }
 
@@ -79,7 +96,9 @@ if ($role === 'superadmin' && $active_router_id <= 0 && !empty($active_router_co
                     <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
                     <input type="hidden" name="redirect_to" value="<?php echo html_escape($return_url); ?>">
                     <select name="router_id" class="form-select form-select-sm" style="min-width: 200px;" onchange="this.form.submit()">
-                        <option value="0"<?php echo $active_router_id <= 0 ? ' selected' : ''; ?>>Semua Distribusi</option>
+                        <?php if ($can_choose_all_router): ?>
+                            <option value="0"<?php echo $active_router_id <= 0 ? ' selected' : ''; ?>>Semua Distribusi</option>
+                        <?php endif; ?>
                         <?php foreach ($active_router_options as $router_option): ?>
                             <?php $router_option_id = (int) ($router_option['id'] ?? 0); ?>
                             <option value="<?php echo $router_option_id; ?>"<?php echo $router_option_id === $active_router_id ? ' selected' : ''; ?>>
@@ -129,7 +148,9 @@ if ($role === 'superadmin' && $active_router_id <= 0 && !empty($active_router_co
                 <input type="hidden" name="redirect_to" value="<?php echo html_escape($return_url); ?>">
                 <label class="small text-muted mb-0 flex-shrink-0" for="routerSelectMobile">Router</label>
                 <select id="routerSelectMobile" name="router_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="0"<?php echo $active_router_id <= 0 ? ' selected' : ''; ?>>Semua Distribusi</option>
+                    <?php if ($can_choose_all_router): ?>
+                        <option value="0"<?php echo $active_router_id <= 0 ? ' selected' : ''; ?>>Semua Distribusi</option>
+                    <?php endif; ?>
                     <?php foreach ($active_router_options as $router_option): ?>
                         <?php $router_option_id = (int) ($router_option['id'] ?? 0); ?>
                         <option value="<?php echo $router_option_id; ?>"<?php echo $router_option_id === $active_router_id ? ' selected' : ''; ?>>

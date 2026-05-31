@@ -92,9 +92,11 @@ class Auth extends CI_Controller
             return redirect('auth/login');
         }
 
+        $router_access_ids = array();
         $router_scope_id = null;
-        if ($normalized_role !== 'superadmin' && isset($user->router_scope_id)) {
-            $router_scope_id = (int) $user->router_scope_id > 0 ? (int) $user->router_scope_id : null;
+        if ($normalized_role !== 'superadmin') {
+            $router_access_ids = $this->load_user_router_access_ids($user);
+            $router_scope_id = !empty($router_access_ids) ? (int) $router_access_ids[0] : null;
         }
 
         $session_data = array(
@@ -102,6 +104,10 @@ class Auth extends CI_Controller
             'name' => (string) $user->name,
             'role' => $normalized_role,
             'router_scope_id' => $router_scope_id,
+            'router_access_ids' => $router_access_ids,
+            'active_router' => $router_scope_id,
+            'active_router_id' => $router_scope_id,
+            'dashboard_router_id' => $router_scope_id,
             'logged_in' => true,
             'last_activity_ts' => time(),
             'user' => array(
@@ -109,6 +115,7 @@ class Auth extends CI_Controller
                 'name' => (string) $user->name,
                 'role' => $normalized_role,
                 'router_scope_id' => $router_scope_id,
+                'router_access_ids' => $router_access_ids,
             ),
         );
 
@@ -137,6 +144,49 @@ class Auth extends CI_Controller
         }
 
         return redirect('dashboard');
+    }
+
+    private function load_user_router_access_ids($user)
+    {
+        if (!$user || empty($user->id)) {
+            return array();
+        }
+
+        $ids = array();
+        $user_id = (int) $user->id;
+
+        if ($this->db->table_exists('user_router_access') && $this->db->table_exists('routers')) {
+            $this->db
+                ->select('ura.router_id')
+                ->from('user_router_access ura')
+                ->join('routers r', 'r.id = ura.router_id', 'inner')
+                ->where('ura.user_id', $user_id)
+                ->order_by('ura.router_id', 'ASC');
+
+            $router_fields = $this->db->list_fields('routers');
+            if (in_array('is_active', $router_fields, true)) {
+                $this->db->where('r.is_active', 1);
+            } elseif (in_array('status', $router_fields, true)) {
+                $this->db->where('LOWER(r.status)', 'active');
+            }
+
+            $rows = $this->db->get()->result_array();
+            foreach ($rows as $row) {
+                $router_id = (int) ($row['router_id'] ?? 0);
+                if ($router_id > 0) {
+                    $ids[$router_id] = $router_id;
+                }
+            }
+        }
+
+        if (isset($user->router_scope_id)) {
+            $legacy_id = (int) $user->router_scope_id;
+            if ($legacy_id > 0) {
+                $ids[$legacy_id] = $legacy_id;
+            }
+        }
+
+        return array_values($ids);
     }
 
     public function logout()

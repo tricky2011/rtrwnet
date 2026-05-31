@@ -83,9 +83,11 @@ class Dashboard extends MY_Controller
 
     public function switch_router($router_id = null)
     {
-        $this->require_role(array('superadmin'));
+        $this->require_role(array('superadmin', 'admin', 'teknisi'));
 
-        $router_context = $this->resolve_dashboard_router_context('superadmin');
+        $role = normalizeRole((string) $this->session->userdata('role'));
+        $is_superadmin = ($role === 'superadmin');
+        $router_context = $this->resolve_dashboard_router_context($role);
         $router_options = (array) ($router_context['router_options'] ?? array());
         $allowed_ids = array();
         foreach ($router_options as $row) {
@@ -107,6 +109,11 @@ class Dashboard extends MY_Controller
         }
 
         if ($selected <= 0) {
+            if (!$is_superadmin) {
+                $this->session->set_flashdata('error', 'Router wajib dipilih sesuai akses Anda.');
+                $this->redirect_back();
+                return;
+            }
             $this->session->set_userdata('active_router', null);
             $this->session->set_userdata('active_router_id', null);
             $this->session->set_userdata('router_scope_id', null);
@@ -612,15 +619,45 @@ class Dashboard extends MY_Controller
                 $this->session->set_userdata('dashboard_router_id', null);
             }
         } else {
-            $selected_router_id = $scope_router_id !== null ? (int) $scope_router_id : null;
-            $this->session->set_userdata('active_router_id', null);
-            $this->session->set_userdata('dashboard_router_id', null);
-            if ($selected_router_id !== null) {
-                $options = array_values(array_filter($options, static function ($row) use ($selected_router_id) {
-                    return (int) ($row['id'] ?? 0) === (int) $selected_router_id;
-                }));
+            $allowed_router_ids = $this->session->userdata('router_access_ids');
+            $allowed_router_ids = is_array($allowed_router_ids) ? $allowed_router_ids : array();
+            if (empty($allowed_router_ids) && $scope_router_id !== null) {
+                $allowed_router_ids = array((int) $scope_router_id);
+            }
+
+            $allowed_map = array();
+            foreach ($allowed_router_ids as $id) {
+                $id = (int) $id;
+                if ($id > 0) {
+                    $allowed_map[$id] = true;
+                }
+            }
+
+            $options = array_values(array_filter($options, static function ($row) use ($allowed_map) {
+                return isset($allowed_map[(int) ($row['id'] ?? 0)]);
+            }));
+
+            $session_selected = (int) $this->session->userdata('active_router_id');
+            if ($session_selected <= 0) {
+                $session_selected = (int) $this->session->userdata('dashboard_router_id');
+            }
+            if ($session_selected <= 0) {
+                $session_selected = (int) $this->session->userdata('router_scope_id');
+            }
+
+            if ($session_selected > 0 && isset($allowed_map[$session_selected])) {
+                $selected_router_id = $session_selected;
+            } elseif (!empty($options)) {
+                $selected_router_id = (int) ($options[0]['id'] ?? 0);
             } else {
-                $options = array();
+                $selected_router_id = null;
+            }
+
+            if ($selected_router_id !== null && $selected_router_id > 0) {
+                $this->session->set_userdata('active_router', $selected_router_id);
+                $this->session->set_userdata('active_router_id', $selected_router_id);
+                $this->session->set_userdata('router_scope_id', $selected_router_id);
+                $this->session->set_userdata('dashboard_router_id', $selected_router_id);
             }
         }
 
@@ -640,7 +677,7 @@ class Dashboard extends MY_Controller
             'selected_router_id' => $selected_router_id,
             'selected_router_name' => $selected_router_name,
             'router_options' => $options,
-            'can_switch_router' => $is_superadmin,
+            'can_switch_router' => $is_superadmin || count($options) > 1,
         );
     }
 

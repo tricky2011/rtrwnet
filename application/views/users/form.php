@@ -10,6 +10,10 @@ $router_options = isset($router_form['router_options']) && is_array($router_form
 $router_count = (int) ($router_form['router_count'] ?? count($router_options));
 $single_router_auto_id = isset($router_form['single_router_auto_id']) ? (int) $router_form['single_router_auto_id'] : null;
 $selected_router_scope_id = isset($router_form['selected_router_scope_id']) ? $router_form['selected_router_scope_id'] : null;
+$selected_router_scope_ids = isset($router_form['selected_router_scope_ids']) && is_array($router_form['selected_router_scope_ids'])
+    ? array_map('intval', $router_form['selected_router_scope_ids'])
+    : array();
+$selected_router_scope_map = array_fill_keys($selected_router_scope_ids, true);
 $actor_role = isset($router_form['actor_role']) ? (string) $router_form['actor_role'] : '';
 $can_select_all_router = !empty($router_form['can_select_all']);
 
@@ -82,7 +86,7 @@ ob_start();
 
             <?php if ($router_scope_enabled): ?>
                 <div class="col-md-6" id="routerScopeContainer">
-                    <label class="form-label">Router Scope</label>
+                    <label class="form-label">Akses Router</label>
 
                     <?php if ($router_count <= 0): ?>
                         <div class="alert alert-warning mb-0">
@@ -101,7 +105,7 @@ ob_start();
                         <input type="text" class="form-control" value="<?php echo html_escape($single_router_name); ?>" readonly>
                         <input
                             type="hidden"
-                            name="router_scope_id"
+                            name="router_scope_ids[]"
                             id="routerScopeHidden"
                             value="<?php echo html_escape((string) ($selected_router_scope_id ?: $single_router_auto_id)); ?>"
                             data-auto-id="<?php echo (int) $single_router_auto_id; ?>"
@@ -110,23 +114,19 @@ ob_start();
                             Router otomatis dipilih karena hanya ada 1 router aktif.
                         </small>
                     <?php else: ?>
-                        <?php $selected_router_scope = (string) set_value('router_scope_id', $selected_router_scope_id); ?>
-                        <select name="router_scope_id" id="routerScopeSelect" class="form-select">
-                            <?php if ($can_select_all_router): ?>
-                                <option value="">Semua Router (hanya untuk role superadmin)</option>
-                            <?php endif; ?>
+                        <select name="router_scope_ids[]" id="routerScopeSelect" class="form-select" multiple size="<?php echo min(8, max(4, $router_count)); ?>">
                             <?php foreach ($router_options as $opt): ?>
                                 <?php
                                 $opt_id = (int) ($opt['id'] ?? 0);
                                 $opt_name = (string) ($opt['name'] ?? ('Router #' . $opt_id));
                                 ?>
-                                <option value="<?php echo $opt_id; ?>" <?php echo $selected_router_scope === (string) $opt_id ? 'selected' : ''; ?>>
+                                <option value="<?php echo $opt_id; ?>" <?php echo isset($selected_router_scope_map[$opt_id]) ? 'selected' : ''; ?>>
                                     <?php echo html_escape($opt_name); ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
                         <small class="text-muted">
-                            Pilih router untuk membatasi akses user sesuai distribusi.
+                            Tahan Ctrl/Cmd untuk memilih lebih dari satu router. Untuk role superadmin, pilihan ini diabaikan karena aksesnya semua router.
                         </small>
                     <?php endif; ?>
                 </div>
