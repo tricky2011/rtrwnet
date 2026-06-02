@@ -26,7 +26,7 @@ class Static_ip_sync_model extends CI_Model
         if (empty($result['success'])) {
             return array(
                 'success' => false,
-                'message' => (string) ($result['error'] ?? 'Gagal membaca /queue/simple/print'),
+                'message' => (string) ($result['error'] ?? 'Gagal membaca Simple Queue'),
                 'data' => array(),
             );
         }
@@ -188,7 +188,7 @@ class Static_ip_sync_model extends CI_Model
         if (empty($queue_result['success'])) {
             return array(
                 'success' => false,
-                'message' => 'Gagal sync queue router #' . (int) $this->active_router_id . ': ' . (string) $queue_result['message'],
+                'message' => 'Gagal sinkronisasi Static IP router #' . (int) $this->active_router_id . ': ' . (string) $queue_result['message'],
                 'stats' => array(),
             );
         }
@@ -226,9 +226,14 @@ class Static_ip_sync_model extends CI_Model
             'skipped_no_arp' => 0,
             'skipped_no_lease' => 0,
             'skipped_pppoe' => 0,
+            'skipped_deleted_static' => 0,
+            'terminated_missing_queue' => 0,
+            'prune_checked' => 0,
             'lease_warning' => !empty($lease_result['success']) ? '' : (string) ($lease_result['message'] ?? ''),
             'errors' => array(),
         );
+        $seen_ips = array();
+        $seen_queue_names = array();
 
         foreach ($queue_rows as $queue_row) {
             $queue_name = trim((string) ($queue_row['name'] ?? ''));
@@ -243,6 +248,11 @@ class Static_ip_sync_model extends CI_Model
                 if (!$this->ip_matches_any_cidr($ip, $allowed_cidrs)) {
                     $stats['skipped_outside_cidr']++;
                     continue;
+                }
+
+                $seen_ips[$ip] = $ip;
+                if ($queue_name !== '') {
+                    $seen_queue_names[$queue_name] = $queue_name;
                 }
 
                 $arp = isset($arp_map[$ip]) ? $arp_map[$ip] : array();
@@ -308,6 +318,11 @@ class Static_ip_sync_model extends CI_Model
                     continue;
                 }
 
+                if ($this->has_deleted_static_tombstone($ip, $queue_name)) {
+                    $stats['skipped_deleted_static']++;
+                    continue;
+                }
+
                 $insert = $this->build_static_insert_payload($ip, $queue_name, $observation, $package);
                 if (empty($insert)) {
                     $stats['failed']++;
@@ -336,10 +351,18 @@ class Static_ip_sync_model extends CI_Model
             }
         }
 
+        $prune = $this->prune_missing_static_customers(array_values($seen_ips), array_values($seen_queue_names));
+        $stats['terminated_missing_queue'] = (int) ($prune['terminated'] ?? 0);
+        $stats['prune_checked'] = (int) ($prune['checked'] ?? 0);
+        if (!empty($prune['errors'])) {
+            $stats['errors'] = array_merge($stats['errors'], (array) $prune['errors']);
+            $stats['failed'] += count((array) $prune['errors']);
+        }
+
         $synced = (int) $stats['inserted'] + (int) $stats['updated'];
         return array(
             'success' => true,
-            'message' => $synced . ' Static IP berhasil disinkronisasi dari Simple Queue + ARP/Lease router #' . (int) $this->active_router_id,
+            'message' => 'Sinkronisasi Static IP selesai. Diperbarui: ' . $synced . ', dinonaktifkan: ' . (int) $stats['terminated_missing_queue'] . '.',
             'stats' => $stats,
         );
     }
@@ -574,6 +597,9 @@ class Static_ip_sync_model extends CI_Model
             'skipped_no_arp' => 0,
             'skipped_no_lease' => 0,
             'skipped_pppoe' => 0,
+            'skipped_deleted_static' => 0,
+            'terminated_missing_queue' => 0,
+            'prune_checked' => 0,
             'lease_warning' => '',
             'errors' => array(),
         );
@@ -829,6 +855,13 @@ class Static_ip_sync_model extends CI_Model
                 $qb->where($prefix . $column, $expected);
             }
         }
+
+        if ($this->has_customer_field('status')) {
+            $deleted_statuses = $this->resolve_existing_customer_status_values(array('terminated', 'deleted', 'inactive', 'disabled'));
+            if (!empty($deleted_statuses)) {
+                $qb->where_not_in($prefix . 'status', $deleted_statuses);
+            }
+        }
     }
 
     private function find_existing_customer_for_static_ip($ip, $queue_name)
@@ -909,6 +942,68 @@ class Static_ip_sync_model extends CI_Model
 
         $row = $qb->order_by('id', 'DESC')->limit(1)->get()->row_array();
         return is_array($row) ? $row : array();
+    }
+
+    private function has_deleted_static_tombstone($ip, $queue_name)
+    {
+        if (!$this->has_customer_field('status')) {
+            return false;
+        }
+
+        $deleted_statuses = $this->resolve_existing_customer_status_values(array('terminated', 'deleted', 'inactive', 'disabled'));
+        if (empty($deleted_statuses)) {
+            return false;
+        }
+
+        $ip = trim((string) $ip);
+        $queue_name = trim((string) $queue_name);
+        $normalized_username = $this->normalize_queue_username($queue_name);
+        if ($ip === '' && $queue_name === '' && $normalized_username === '') {
+            return false;
+        }
+
+        $qb = $this->db->from($this->customer_table);
+        $qb->group_start();
+
+        $has_condition = false;
+        if ($queue_name !== '' && $this->has_customer_field('queue_name')) {
+            $qb->where('queue_name', $queue_name);
+            $has_condition = true;
+        }
+        if ($normalized_username !== '' && $this->has_customer_field('username')) {
+            if ($has_condition) {
+                $qb->or_where('username', $normalized_username);
+            } else {
+                $qb->where('username', $normalized_username);
+                $has_condition = true;
+            }
+        }
+        if ($ip !== '' && $this->has_customer_field('ip_address')) {
+            if ($has_condition) {
+                $qb->or_where('ip_address', $ip);
+            } else {
+                $qb->where('ip_address', $ip);
+                $has_condition = true;
+            }
+        }
+
+        if (!$has_condition) {
+            $qb->where('1 = 0', null, false);
+        }
+        $qb->group_end();
+
+        if ($this->has_customer_field('connection_type')) {
+            $qb->where('UPPER(connection_type)', 'STATIC');
+        }
+        if ($this->has_customer_field('pppoe_username')) {
+            $qb->where("COALESCE(pppoe_username, '') = ''", null, false);
+        }
+        if ($this->has_customer_field('router_id') && $this->active_router_id > 0) {
+            $qb->where('router_id', (int) $this->active_router_id);
+        }
+        $qb->where_in('status', $deleted_statuses);
+
+        return (int) $qb->count_all_results() > 0;
     }
 
     private function is_pppoe_customer(array $customer)
@@ -1028,7 +1123,7 @@ class Static_ip_sync_model extends CI_Model
             $payload['address'] = (string) ($payload['address'] ?? '-');
         }
         if ($this->has_customer_field('notes')) {
-            $payload['notes'] = 'Auto sync STATIC dari /queue/simple + /ip/arp';
+            $payload['notes'] = 'Data dibuat otomatis dari sinkronisasi Static IP.';
         }
         if ($this->has_customer_field('join_date')) {
             $payload['join_date'] = $today;
@@ -1426,14 +1521,14 @@ class Static_ip_sync_model extends CI_Model
     {
         $queue_name = trim((string) $queue_name);
         if ($queue_name === '') {
-            return array('success' => false, 'message' => 'queue_name kosong.');
+            return array('success' => false, 'message' => 'Nama target kosong.');
         }
 
         $find = $this->mikrotik_api->command_safe('/queue/simple/print', array('?name' => $queue_name));
         if (empty($find['success'])) {
             return array(
                 'success' => false,
-                'message' => 'Gagal cari queue `' . $queue_name . '`: ' . (string) ($find['error'] ?? 'unknown'),
+                'message' => 'Gagal mencari target `' . $queue_name . '`: ' . (string) ($find['error'] ?? 'unknown'),
             );
         }
 
@@ -1462,7 +1557,7 @@ class Static_ip_sync_model extends CI_Model
         if (empty($rows[0]['.id'])) {
             return array(
                 'success' => false,
-                'message' => 'Queue `' . $queue_name . '` tidak ditemukan.',
+                'message' => 'Target `' . $queue_name . '` tidak ditemukan.',
             );
         }
 
@@ -1475,13 +1570,13 @@ class Static_ip_sync_model extends CI_Model
         if (empty($set['success'])) {
             return array(
                 'success' => false,
-                'message' => 'Gagal set queue `' . $queue_name . '` menjadi ' . ($disable ? 'disabled' : 'enabled') . ': ' . (string) ($set['error'] ?? 'unknown'),
+                'message' => 'Gagal mengubah status target `' . $queue_name . '`: ' . (string) ($set['error'] ?? 'unknown'),
             );
         }
 
         return array(
             'success' => true,
-            'message' => 'Queue `' . $queue_name . '` ' . ($disable ? 'disabled' : 'enabled') . '.',
+            'message' => 'Status target `' . $queue_name . '` berhasil diperbarui.',
         );
     }
 
@@ -1512,6 +1607,253 @@ class Static_ip_sync_model extends CI_Model
         $this->apply_customer_soft_delete_scope($qb);
         $this->apply_customer_router_scope($qb);
         return $qb->get()->result_array();
+    }
+
+    private function prune_missing_static_customers(array $active_ips, array $active_queue_names)
+    {
+        $result = array(
+            'checked' => 0,
+            'terminated' => 0,
+            'skipped' => 0,
+            'errors' => array(),
+        );
+
+        if ($this->active_router_id <= 0 || !$this->db->table_exists($this->customer_table) || !$this->has_customer_field('id')) {
+            return $result;
+        }
+
+        $active_ip_map = array();
+        foreach ($active_ips as $ip) {
+            $ip = trim((string) $ip);
+            if ($ip !== '') {
+                $active_ip_map[$ip] = true;
+            }
+        }
+
+        $active_queue_exact = array();
+        $active_queue_key = array();
+        foreach ($active_queue_names as $queue_name) {
+            $queue_name = trim((string) $queue_name);
+            if ($queue_name === '') {
+                continue;
+            }
+            $active_queue_exact[strtolower($queue_name)] = true;
+            $key = $this->normalize_queue_lookup_key($queue_name);
+            if ($key !== '') {
+                $active_queue_key[$key] = true;
+            }
+        }
+
+        $select = array('id');
+        foreach (array('status', 'queue_name', 'username', 'ip_address', 'connection_type', 'pppoe_username', 'static_source', 'notes') as $field) {
+            if ($this->has_customer_field($field)) {
+                $select[] = $field;
+            }
+        }
+
+        $qb = $this->db
+            ->select(implode(', ', array_unique($select)), false)
+            ->from($this->customer_table);
+
+        if ($this->has_customer_field('connection_type')) {
+            $qb->where('UPPER(connection_type)', 'STATIC');
+        } else {
+            $qb->group_start();
+            $managed_filter = false;
+            if ($this->has_customer_field('queue_name')) {
+                $qb->where("COALESCE(queue_name, '') <> ''", null, false);
+                $managed_filter = true;
+            }
+            if ($this->has_customer_field('static_source')) {
+                $managed_filter ? $qb->or_like('static_source', 'simple_queue') : $qb->like('static_source', 'simple_queue');
+                $managed_filter = true;
+            }
+            if ($this->has_customer_field('notes')) {
+                $managed_filter ? $qb->or_like('notes', 'Auto sync STATIC') : $qb->like('notes', 'Auto sync STATIC');
+                $managed_filter = true;
+            }
+            if (!$managed_filter) {
+                $qb->where('1 = 0', null, false);
+            }
+            $qb->group_end();
+        }
+
+        if ($this->has_customer_field('pppoe_username')) {
+            $qb->where("COALESCE(pppoe_username, '') = ''", null, false);
+        }
+        if ($this->has_customer_field('status')) {
+            $terminated = $this->resolve_customer_status_value(array('terminated', 'inactive', 'disabled'));
+            if ($terminated !== null) {
+                $qb->where('status !=', $terminated);
+            }
+        }
+
+        $this->apply_customer_soft_delete_scope($qb);
+        $this->apply_customer_router_scope($qb);
+        $rows = $qb->get()->result_array();
+
+        foreach ($rows as $row) {
+            $result['checked']++;
+
+            $ip = trim((string) ($row['ip_address'] ?? ''));
+            if ($ip !== '' && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false && !$this->ip_matches_any_cidr($ip, $this->get_static_sync_cidrs())) {
+                $result['skipped']++;
+                continue;
+            }
+
+            $queue_name = trim((string) ($row['queue_name'] ?? ''));
+            $queue_key = $this->normalize_queue_lookup_key($queue_name !== '' ? $queue_name : (string) ($row['username'] ?? ''));
+
+            $still_exists = false;
+            if ($ip !== '' && isset($active_ip_map[$ip])) {
+                $still_exists = true;
+            }
+            if (!$still_exists && $queue_name !== '' && isset($active_queue_exact[strtolower($queue_name)])) {
+                $still_exists = true;
+            }
+            if (!$still_exists && $queue_key !== '' && isset($active_queue_key[$queue_key])) {
+                $still_exists = true;
+            }
+
+            if ($still_exists) {
+                continue;
+            }
+
+            $payload = $this->build_missing_static_payload($row);
+            if (empty($payload)) {
+                $result['skipped']++;
+                continue;
+            }
+
+            $update_qb = $this->db->where('id', (int) ($row['id'] ?? 0));
+            if ($this->has_customer_field('router_id')) {
+                $update_qb->where('router_id', (int) $this->active_router_id);
+            }
+            $ok = $update_qb->update($this->customer_table, $payload);
+            if ($ok) {
+                $result['terminated']++;
+                continue;
+            }
+
+            $error = $this->db->error();
+            $result['errors'][] = array(
+                'type' => 'prune_missing_static',
+                'customer_id' => (int) ($row['id'] ?? 0),
+                'ip' => $ip,
+                'queue_name' => $queue_name,
+                'error' => $error,
+            );
+            log_message('error', '[STATIC_IP_SYNC] prune missing static gagal: ' . json_encode(end($result['errors'])));
+        }
+
+        return $result;
+    }
+
+    private function build_missing_static_payload(array $row)
+    {
+        $payload = array();
+        $now = date('Y-m-d H:i:s');
+
+        if ($this->has_customer_field('status')) {
+            $status = $this->resolve_customer_status_value(array('terminated', 'inactive', 'disabled'));
+            if ($status !== null) {
+                $payload['status'] = $status;
+            }
+        }
+        if ($this->has_customer_field('static_source')) {
+            $payload['static_source'] = 'simple_queue_missing';
+        }
+        if ($this->has_customer_field('notes')) {
+            $note = 'Layanan static dinonaktifkan otomatis pada ' . $now;
+            $existing = trim((string) ($row['notes'] ?? ''));
+            if ($existing === '') {
+                $payload['notes'] = $note;
+            } elseif (strpos($existing, 'Layanan static dinonaktifkan otomatis') === false) {
+                $payload['notes'] = $existing . "\n" . $note;
+            }
+        }
+        if ($this->has_customer_field('updated_at')) {
+            $payload['updated_at'] = $now;
+        }
+
+        if (!isset($payload['status'])) {
+            unset($payload['static_source'], $payload['notes'], $payload['updated_at']);
+        }
+
+        return $payload;
+    }
+
+    private function resolve_customer_status_value(array $candidates)
+    {
+        if (!$this->has_customer_field('status')) {
+            return null;
+        }
+
+        $allowed = $this->get_customer_status_values();
+        if (!empty($allowed)) {
+            foreach ($candidates as $candidate) {
+                $candidate = strtolower(trim((string) $candidate));
+                if ($candidate !== '' && in_array($candidate, $allowed, true)) {
+                    return $candidate;
+                }
+            }
+            return null;
+        }
+
+        foreach ($candidates as $candidate) {
+            $candidate = trim((string) $candidate);
+            if ($candidate !== '') {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private function resolve_existing_customer_status_values(array $candidates)
+    {
+        $allowed = $this->get_customer_status_values();
+        if (empty($allowed)) {
+            return array_values(array_filter(array_map('trim', $candidates), static function ($value) {
+                return $value !== '';
+            }));
+        }
+
+        $matched = array();
+        foreach ($candidates as $candidate) {
+            $candidate = strtolower(trim((string) $candidate));
+            if ($candidate !== '' && in_array($candidate, $allowed, true)) {
+                $matched[] = $candidate;
+            }
+        }
+
+        return array_values(array_unique($matched));
+    }
+
+    private function get_customer_status_values()
+    {
+        if (isset($this->customer_meta['status']['_enum_values'])) {
+            return (array) $this->customer_meta['status']['_enum_values'];
+        }
+        if (!$this->has_customer_field('status')) {
+            return array();
+        }
+
+        $type = strtolower((string) ($this->customer_meta['status']['Type'] ?? ''));
+        if ($type === '' || !preg_match('/^enum\((.*)\)$/i', $type, $matches)) {
+            return array();
+        }
+
+        $values = array();
+        foreach (str_getcsv($matches[1], ',', "'") as $value) {
+            $value = strtolower(trim((string) $value));
+            if ($value !== '') {
+                $values[] = $value;
+            }
+        }
+
+        $this->customer_meta['status']['_enum_values'] = $values;
+        return $values;
     }
 
     private function customer_has_overdue_for_isolir($customer_id, $grace_days = 5, $today = null)

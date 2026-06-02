@@ -55,7 +55,7 @@ class Admin_whatsapp extends MY_Controller
         $result = $this->whatsapp_service->resend_message((int) $id);
         $this->session->set_flashdata(
             !empty($result['success']) ? 'success' : 'error',
-            (string) ($result['message'] ?? (!empty($result['success']) ? 'Pesan masuk queue.' : 'Resend gagal.'))
+            (string) ($result['message'] ?? (!empty($result['success']) ? 'Pesan masuk antrian.' : 'Kirim ulang gagal.'))
         );
 
         $return_to = trim((string) $this->input->post('return_to', true));

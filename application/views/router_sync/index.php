@@ -1,7 +1,7 @@
 <?php
 $page_title = 'Router Sync - ' . app_name();
 $page_heading = 'Router Sync';
-$page_subheading = 'Sinkronisasi PPPoE + Static IP dari MikroTik dalam satu halaman.';
+$page_subheading = 'Sinkronisasi data PPPoE dan Static IP dari MikroTik dalam satu halaman.';
 $active_menu = 'router_sync';
 
 $pppoe_data_form = isset($pppoe_data_form) && is_array($pppoe_data_form) ? $pppoe_data_form : array();
@@ -11,6 +11,7 @@ $selected_router_id = isset($selected_router_id) ? (int) $selected_router_id : 0
 $is_superadmin_user = !empty($is_superadmin_user);
 $recent_runs = isset($recent_runs) && is_array($recent_runs) ? $recent_runs : array();
 $last_result = isset($last_result) && is_array($last_result) ? $last_result : array();
+$show_debug_raw = defined('ENVIRONMENT') && ENVIRONMENT !== 'production';
 
 ob_start();
 ?>
@@ -21,9 +22,9 @@ ob_start();
 <?php if ($this->session->flashdata('error')): ?>
 <div class="alert alert-danger"><?php echo $this->session->flashdata('error'); ?></div>
 <?php endif; ?>
-<?php if ($this->session->flashdata('debug_raw')): ?>
+<?php if ($show_debug_raw && $this->session->flashdata('debug_raw')): ?>
 <div class="alert alert-info">
-    <div class="fw-semibold mb-1">Debug RAW Response</div>
+    <div class="fw-semibold mb-1">Detail Teknis</div>
     <pre class="mb-0 small"><?php echo html_escape((string) $this->session->flashdata('debug_raw')); ?></pre>
 </div>
 <?php endif; ?>
@@ -146,7 +147,7 @@ ob_start();
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
             <div>
                 <h6 class="mb-1">Eksekusi Manual</h6>
-                <div class="text-muted small">Sinkronisasi customer STATIC dari MikroTik (/queue/simple + /ip/arp) + check auto isolir.</div>
+                <div class="text-muted small">Sinkronisasi customer STATIC dari MikroTik dan pengecekan auto isolir.</div>
             </div>
             <div class="d-flex gap-2">
                 <?php echo form_open('static-ip-sync/run-sync', array('class' => 'm-0')); ?>
@@ -209,7 +210,7 @@ ob_start();
                 <thead>
                     <tr>
                         <th style="width: 70px;">#</th>
-                        <th>Job</th>
+                        <th>Proses</th>
                         <th style="width: 120px;">Status</th>
                         <th style="width: 180px;">Started</th>
                         <th style="width: 180px;">Finished</th>
@@ -281,4 +282,3 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 HTML;
 include APPPATH . 'views/layout/master.php';
-

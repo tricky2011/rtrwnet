@@ -594,7 +594,7 @@ class CustomerUpgrade extends MY_Controller
             ? ' Sesi PPP aktif diputus untuk apply instan.'
             : ' Tidak ada sesi PPP aktif yang perlu diputus.';
         if ($secret_auto_created) {
-            $success_message .= ' PPP secret customer otomatis dibuat ulang di MikroTik.';
+            $success_message .= ' Akses PPP pelanggan diperbarui otomatis di MikroTik.';
         }
         $this->session->set_flashdata('success', $success_message);
         redirect($redirect_target);

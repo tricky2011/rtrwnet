@@ -1445,7 +1445,7 @@ class Settings_model extends CI_Model
             $push($keys, $base);
         }
 
-        if (!empty($keys) || !$include_derived) {
+        if (!$include_derived) {
             return array_values($keys);
         }
 

@@ -179,8 +179,8 @@ class Whatsapp_log_model extends CI_Model
         if ($status === 'sent' || (int) ($log['retry_count'] ?? 0) >= (int) $max_retry) {
             $new_id = $this->clone_for_resend((int) $id);
             return $new_id
-                ? array('success' => true, 'message' => 'Pesan dibuat ulang ke queue.', 'id' => $new_id)
-                : array('success' => false, 'message' => 'Gagal membuat ulang pesan.');
+                ? array('success' => true, 'message' => 'Pesan masuk kembali ke antrian.', 'id' => $new_id)
+                : array('success' => false, 'message' => 'Gagal menambahkan pesan ke antrian.');
         }
 
         $ok = $this->db

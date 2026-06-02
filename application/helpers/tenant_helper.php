@@ -83,7 +83,7 @@ if (!function_exists('connectRouter')) {
         if ($router_id <= 0) {
             return array(
                 'success' => false,
-                'message' => 'router_id tidak valid.',
+                'message' => 'Router belum valid.',
                 'router' => null,
                 'api' => null,
             );
@@ -354,10 +354,10 @@ if (!function_exists('telegram_get_groups_by_type')) {
         }
 
         if (empty($groups)) {
-            $router_suffix = $router_filter_applied ? (' pada router_id=' . (int) $router_id) : '';
+            $router_suffix = $router_filter_applied ? ' untuk router ini' : '';
             return array(
                 'success' => false,
-                'message' => 'Group telegram type `' . $type . '`' . $router_suffix . ' tidak ditemukan.',
+                'message' => 'Grup Telegram ' . $type . $router_suffix . ' belum tersedia.',
                 'groups' => array(),
                 'router_filtered' => $router_filter_applied,
                 'router_fallback_used' => false,
@@ -380,15 +380,24 @@ if (!function_exists('telegram_dispatch_to_groups')) {
      *
      * @param array $groups
      * @param string $message
+     * @param array $options
      * @return array
      */
-    function telegram_dispatch_to_groups(array $groups, $message)
+    function telegram_dispatch_to_groups(array $groups, $message, array $options = array())
     {
         $CI =& get_instance();
         $CI->load->database();
         $CI->load->model('Settings_model', 'settings_model');
         $CI->load->library('encryption');
         static $dispatch_cache = array();
+
+        $parse_mode = trim((string) ($options['parse_mode'] ?? 'HTML'));
+        if ($parse_mode === '') {
+            $parse_mode = 'HTML';
+        }
+        $reply_markup = isset($options['reply_markup']) && is_array($options['reply_markup'])
+            ? $options['reply_markup']
+            : array();
 
         if (empty($groups)) {
             return array('success' => false, 'message' => 'Tidak ada target group.', 'sent' => 0, 'failed' => 0, 'deduped' => 0);
@@ -458,7 +467,9 @@ if (!function_exists('telegram_dispatch_to_groups')) {
                 continue;
             }
 
-            $dispatch_key = ($bot_id > 0 ? (string) $bot_id : md5($token)) . '|' . $chat_id . '|' . md5($message);
+            $dispatch_key = ($bot_id > 0 ? (string) $bot_id : md5($token))
+                . '|' . $chat_id
+                . '|' . md5($message . '|' . json_encode($reply_markup));
             if (isset($dispatch_cache[$dispatch_key])) {
                 $deduped++;
                 continue;
@@ -468,9 +479,12 @@ if (!function_exists('telegram_dispatch_to_groups')) {
             $body = array(
                 'chat_id' => $chat_id,
                 'text' => $message,
-                'parse_mode' => 'HTML',
+                'parse_mode' => $parse_mode,
                 'disable_web_page_preview' => true,
             );
+            if (!empty($reply_markup)) {
+                $body['reply_markup'] = $reply_markup;
+            }
 
             $ch = curl_init();
             curl_setopt_array($ch, array(
@@ -513,7 +527,7 @@ if (!function_exists('telegram_dispatch_to_groups')) {
             log_message('error', '[TELEGRAM] send failed: ' . substr((string) $resp, 0, 300));
         }
 
-        $summary = 'Telegram dispatch selesai. sent=' . $sent . ', failed=' . $failed;
+        $summary = 'Pengiriman Telegram selesai. Berhasil=' . $sent . ', gagal=' . $failed;
         if ($deduped > 0) {
             $summary .= ', deduped=' . $deduped;
         }
@@ -575,7 +589,7 @@ if (!function_exists('sendTelegramByRouter')) {
         if ($router_id <= 0) {
             return array(
                 'success' => false,
-                'message' => 'router_id tidak valid untuk dispatch Telegram.',
+                'message' => 'Router tujuan Telegram tidak valid.',
                 'sent' => 0,
                 'failed' => 0,
                 'deduped' => 0,
@@ -621,9 +635,9 @@ if (!function_exists('sendTelegramByRouter')) {
         }
 
         if (empty($groups)) {
-            $msg = 'Group Telegram type `' . $type . '` untuk router_id=' . $router_id . ' tidak ditemukan.';
+            $msg = 'Grup Telegram untuk router ini belum tersedia.';
             if ($allow_router_fallback) {
-                $msg .= ' Fallback group aktif juga tidak ada.';
+                $msg .= ' Silakan lengkapi pengaturan Telegram.';
             }
             log_message('debug', '[TELEGRAM][ROUTER] ' . $msg);
             return array(
@@ -644,9 +658,9 @@ if (!function_exists('sendTelegramByRouter')) {
         $res['skipped'] = false;
         $res['requested_type'] = $type;
         if ($fallback === 'global_type') {
-            $res['message'] .= ' | fallback=group global tanpa router scope';
+            $res['message'] .= ' | menggunakan grup utama';
         } elseif ($fallback === 'router_any_type') {
-            $res['message'] .= ' | fallback=group aktif router tanpa filter type';
+            $res['message'] .= ' | menggunakan grup router';
         }
         return $res;
     }

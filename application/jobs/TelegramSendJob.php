@@ -20,6 +20,8 @@ class TelegramSendJob
         $group_type = trim((string) ($payload['group_type'] ?? 'ops'));
         $router_id = (int) ($payload['router_id'] ?? 0);
         $tenant_id = (int) ($payload['tenant_id'] ?? $job['tenant_id'] ?? 0);
+        $allow_router_fallback = $this->payload_bool($payload, 'allow_router_fallback', false);
+        $allow_legacy_fallback = $this->payload_bool($payload, 'allow_legacy_fallback', $router_id <= 0);
         $inline_keyboard = isset($payload['inline_keyboard']) && is_array($payload['inline_keyboard'])
             ? $payload['inline_keyboard']
             : array();
@@ -37,6 +39,7 @@ class TelegramSendJob
 
         try {
             $this->CI->load->library('telegram_service');
+            $last_target_message = '';
 
             if (!empty($chat_ids) && $bot_token !== '') {
                 $success = 0;
@@ -68,7 +71,9 @@ class TelegramSendJob
                     $group_type !== '' ? $group_type : 'ops',
                     $message,
                     $parse_mode,
-                    $inline_keyboard
+                    $inline_keyboard,
+                    $router_id,
+                    $allow_router_fallback
                 );
                 if ($sent['success']) {
                     return array(
@@ -77,6 +82,7 @@ class TelegramSendJob
                         'retryable' => false,
                     );
                 }
+                $last_target_message = (string) ($sent['message'] ?? '');
             }
 
             // Single install mode (non-tenant): kirim ke group global.
@@ -86,7 +92,8 @@ class TelegramSendJob
                     $message,
                     $parse_mode,
                     $inline_keyboard,
-                    $router_id
+                    $router_id,
+                    $allow_router_fallback
                 );
                 if ($sent_global['success']) {
                     return array(
@@ -95,6 +102,19 @@ class TelegramSendJob
                         'retryable' => false,
                     );
                 }
+                $last_target_message = (string) ($sent_global['message'] ?? $last_target_message);
+            }
+
+            if ($router_id > 0 && !$allow_legacy_fallback) {
+                $target_message = $last_target_message !== ''
+                    ? $last_target_message
+                    : 'Grup Telegram untuk router ini belum tersedia.';
+                return array(
+                    'success' => false,
+                    'message' => $target_message,
+                    'retryable' => !$this->is_missing_target_message($target_message),
+                    'skipped' => $this->is_missing_target_message($target_message),
+                );
             }
 
             // Fallback terakhir: settings_telegram legacy (single tenant).
@@ -121,20 +141,53 @@ class TelegramSendJob
         }
     }
 
-    private function send_to_tenant_groups($tenant_id, $group_type, $message, $parse_mode, array $inline_keyboard = array())
+    private function send_to_tenant_groups($tenant_id, $group_type, $message, $parse_mode, array $inline_keyboard = array(), $router_id = 0, $allow_router_fallback = false)
     {
-        $groups = $this->CI->db
-            ->from('telegram_groups')
-            ->where('tenant_id', (int) $tenant_id)
-            ->where('group_type', trim((string) $group_type))
-            ->where('is_active', 1)
-            ->get()
-            ->result_array();
+        $fields = $this->CI->db->list_fields('telegram_groups');
+        $type_col = in_array('type', $fields, true) ? 'type' : (in_array('group_type', $fields, true) ? 'group_type' : '');
+        if ($type_col === '') {
+            return array('success' => false, 'message' => 'Kolom type/group_type tidak tersedia.');
+        }
+
+        $query_type = $this->normalize_group_type($group_type, $type_col);
+        $router_col = in_array('router_id', $fields, true)
+            ? 'router_id'
+            : (in_array('router_scope_id', $fields, true) ? 'router_scope_id' : '');
+        $router_id = (int) $router_id;
+        if ($router_id > 0 && $router_col === '') {
+            return array('success' => false, 'message' => 'Kolom router_id/router_scope_id tidak tersedia.');
+        }
+
+        $build_query = function () use ($tenant_id, $fields, $type_col, $query_type) {
+            $qb = $this->CI->db
+                ->from('telegram_groups')
+                ->where('tenant_id', (int) $tenant_id)
+                ->where($type_col, $query_type);
+            if (in_array('is_active', $fields, true)) {
+                $qb->where('is_active', 1);
+            }
+            return $qb;
+        };
+
+        if ($router_id > 0 && $router_col !== '') {
+            $groups = $build_query()->where($router_col, $router_id)->get()->result_array();
+            if (empty($groups) && $allow_router_fallback) {
+                $groups = $build_query()
+                    ->group_start()
+                    ->where($router_col, 0)
+                    ->or_where($router_col . ' IS NULL', null, false)
+                    ->group_end()
+                    ->get()
+                    ->result_array();
+            }
+        } else {
+            $groups = $build_query()->get()->result_array();
+        }
 
         if (empty($groups)) {
             return array(
                 'success' => false,
-                'message' => 'Group telegram tenant tidak ditemukan.',
+                'message' => 'Grup Telegram untuk router ini belum tersedia.',
             );
         }
 
@@ -169,36 +222,49 @@ class TelegramSendJob
         );
     }
 
-    private function send_to_global_groups($group_type, $message, $parse_mode, array $inline_keyboard = array(), $router_id = 0)
+    private function send_to_global_groups($group_type, $message, $parse_mode, array $inline_keyboard = array(), $router_id = 0, $allow_router_fallback = false)
     {
         $fields = $this->CI->db->list_fields('telegram_groups');
         $type_col = in_array('type', $fields, true) ? 'type' : (in_array('group_type', $fields, true) ? 'group_type' : '');
         if ($type_col === '') {
             return array('success' => false, 'message' => 'Kolom type/group_type tidak tersedia.');
         }
+        $query_type = $this->normalize_group_type($group_type, $type_col);
         $router_col = in_array('router_id', $fields, true)
             ? 'router_id'
             : (in_array('router_scope_id', $fields, true) ? 'router_scope_id' : '');
 
-        $qb = $this->CI->db
-            ->from('telegram_groups')
-            ->where($type_col, trim((string) $group_type));
+        $build_query = function () use ($fields, $type_col, $query_type) {
+            $qb = $this->CI->db
+                ->from('telegram_groups')
+                ->where($type_col, $query_type);
+            if (in_array('is_active', $fields, true)) {
+                $qb->where('is_active', 1);
+            }
+            if (in_array('tenant_id', $fields, true)) {
+                $qb->where('(tenant_id IS NULL OR tenant_id = 0)', null, false);
+            }
+            return $qb;
+        };
 
-        if (in_array('is_active', $fields, true)) {
-            $qb->where('is_active', 1);
-        }
-        if (in_array('tenant_id', $fields, true)) {
-            $qb->where('(tenant_id IS NULL OR tenant_id = 0)', null, false);
-        }
         if ($router_id > 0 && $router_col !== '') {
-            $qb->where($router_col, (int) $router_id);
+            $groups = $build_query()->where($router_col, (int) $router_id)->get()->result_array();
+            if (empty($groups) && $allow_router_fallback) {
+                $groups = $build_query()
+                    ->group_start()
+                    ->where($router_col, 0)
+                    ->or_where($router_col . ' IS NULL', null, false)
+                    ->group_end()
+                    ->get()
+                    ->result_array();
+            }
+        } else {
+            $groups = $build_query()->get()->result_array();
         }
-
-        $groups = $qb->get()->result_array();
         if (empty($groups)) {
             if ($router_id > 0 && $router_col !== '') {
-                return array('success' => false, 'message' => 'Group Telegram router tidak ditemukan (router_id=' . (int) $router_id . ').');
-            }
+            return array('success' => false, 'message' => 'Grup Telegram untuk router ini belum tersedia.');
+        }
             return array('success' => false, 'message' => 'Global group tidak ditemukan.');
         }
 
@@ -264,6 +330,48 @@ class TelegramSendJob
             'success' => $sent > 0 && $failed === 0,
             'message' => 'Telegram global send done. success=' . $sent . ', failed=' . $failed,
         );
+    }
+
+    private function normalize_group_type($group_type, $type_col)
+    {
+        $group_type = trim((string) $group_type);
+        if ($type_col !== 'group_type') {
+            return $group_type;
+        }
+
+        $legacy_map = array(
+            'teknisi' => 'ops',
+            'admin' => 'billing',
+            'owner' => 'general',
+            'alert' => 'monitoring',
+        );
+
+        return isset($legacy_map[$group_type]) ? $legacy_map[$group_type] : $group_type;
+    }
+
+    private function payload_bool(array $payload, $key, $default = false)
+    {
+        if (!array_key_exists($key, $payload)) {
+            return (bool) $default;
+        }
+
+        $value = $payload[$key];
+        if (is_bool($value)) {
+            return $value;
+        }
+        if (is_numeric($value)) {
+            return (int) $value === 1;
+        }
+
+        $parsed = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        return $parsed === null ? (bool) $default : (bool) $parsed;
+    }
+
+    private function is_missing_target_message($message)
+    {
+        $message = strtolower((string) $message);
+        return strpos($message, 'tidak ditemukan') !== false
+            || strpos($message, 'belum tersedia') !== false;
     }
 
     private function send_via_legacy_settings($message, $parse_mode, array $inline_keyboard = array())

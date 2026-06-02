@@ -287,6 +287,15 @@ $route['static_ip_sync/run_sync'] = 'static_ip_sync/run_sync';
 $route['static-ip-sync/run-check-isolir'] = 'static_ip_sync/run_check_isolir';
 $route['static_ip_sync/run_check_isolir'] = 'static_ip_sync/run_check_isolir';
 
+$route['hotspot'] = 'hotspot/index';
+$route['hotspot/index'] = 'hotspot/index';
+$route['hotspot/add-user'] = 'hotspot/add_user';
+$route['hotspot/add_user'] = 'hotspot/add_user';
+$route['hotspot/generate-users'] = 'hotspot/generate_users';
+$route['hotspot/generate_users'] = 'hotspot/generate_users';
+$route['hotspot/add-profile'] = 'hotspot/add_profile';
+$route['hotspot/add_profile'] = 'hotspot/add_profile';
+
 $route['ont-remote'] = 'ont_remote/index';
 $route['ont_remote'] = 'ont_remote/index';
 $route['ont-remote/detail'] = 'ont_remote/detail';

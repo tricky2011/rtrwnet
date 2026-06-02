@@ -86,10 +86,10 @@ ob_start();
                         <span>Overdue Invoice</span><strong><?php echo (int) ($metrics['overdue_invoices'] ?? 0); ?></strong>
                     </li>
                     <li class="list-group-item d-flex justify-content-between px-0">
-                        <span>Pending Telegram Queue</span><strong><?php echo (int) ($metrics['pending_telegram_queue'] ?? 0); ?></strong>
+                        <span>Antrian Telegram</span><strong><?php echo (int) ($metrics['pending_telegram_queue'] ?? 0); ?></strong>
                     </li>
                     <li class="list-group-item d-flex justify-content-between px-0">
-                        <span>Failed Telegram Queue</span><strong><?php echo (int) ($metrics['failed_telegram_queue'] ?? 0); ?></strong>
+                        <span>Telegram Gagal</span><strong><?php echo (int) ($metrics['failed_telegram_queue'] ?? 0); ?></strong>
                     </li>
                     <li class="list-group-item d-flex justify-content-between px-0">
                         <span>Generated At</span><strong><?php echo html_escape($m['generated_at'] ?? '-'); ?></strong>
@@ -108,7 +108,7 @@ ob_start();
                 <table class="table table-ui mb-0">
                     <thead>
                         <tr>
-                            <th class="ps-3">Job</th>
+                            <th class="ps-3">Proses</th>
                             <th>Status</th>
                             <th>Started</th>
                             <th>Duration</th>

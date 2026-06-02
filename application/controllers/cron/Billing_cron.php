@@ -54,7 +54,7 @@ class Billing_cron extends CI_Controller
             );
             if (!empty($result['success'])) {
                 $result['success'] = true;
-                $result['message'] = 'Billing job masuk queue. Job ID: ' . (int) ($result['job_id'] ?? 0);
+                $result['message'] = 'Proses billing masuk antrian.';
             }
         } elseif ($mode === 'daily' || $mode === 'rolling') {
             $result = $this->billing_automation_service->generate_daily_rolling_invoices(
@@ -114,7 +114,7 @@ class Billing_cron extends CI_Controller
             );
             if (!empty($result['success'])) {
                 $result['success'] = true;
-                $result['message'] = 'Isolir job masuk queue. Job ID: ' . (int) ($result['job_id'] ?? 0);
+                $result['message'] = 'Proses isolir masuk antrian.';
             }
         } else {
             $result = $this->billing_automation_service->auto_suspend($date !== '' ? $date : null, $grace_days);

@@ -8,6 +8,7 @@ $sync_logs = isset($sync_logs) ? $sync_logs : array();
 $router_options = isset($router_options) && is_array($router_options) ? $router_options : array();
 $selected_router_id = isset($selected_router_id) ? (int) $selected_router_id : 0;
 $is_superadmin_user = !empty($is_superadmin_user);
+$show_debug_raw = defined('ENVIRONMENT') && ENVIRONMENT !== 'production';
 ob_start();
 ?>
 
@@ -22,9 +23,9 @@ ob_start();
                 <?php if ($this->session->flashdata('error')): ?>
                 <div class="alert alert-danger"><?php echo $this->session->flashdata('error'); ?></div>
                 <?php endif; ?>
-                <?php if ($this->session->flashdata('debug_raw')): ?>
+                <?php if ($show_debug_raw && $this->session->flashdata('debug_raw')): ?>
                 <div class="alert alert-info">
-                    <div class="fw-semibold mb-1">Debug RAW Response</div>
+                    <div class="fw-semibold mb-1">Detail Teknis</div>
                     <pre class="mb-0 small"><?php echo html_escape($this->session->flashdata('debug_raw')); ?></pre>
                 </div>
                 <?php endif; ?>

@@ -1,7 +1,7 @@
 <?php
 $page_title = 'Static IP Sync - ' . app_name();
 $page_heading = 'Static IP Sync';
-$page_subheading = 'Sinkronisasi customer STATIC dari MikroTik (/queue/simple + /ip/arp) dan kontrol auto isolir via address-list.';
+$page_subheading = 'Sinkronisasi customer STATIC dari MikroTik dan kontrol auto isolir.';
 $active_menu = 'static_ip_sync';
 
 $recent_runs = isset($recent_runs) && is_array($recent_runs) ? $recent_runs : array();
@@ -22,7 +22,7 @@ ob_start();
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
             <div>
                 <h5 class="mb-1">Eksekusi Manual</h5>
-                <div class="text-muted small">Tidak mengubah alur PPPoE existing. Fokus untuk customer STATIC queue only.</div>
+                <div class="text-muted small">Tidak mengubah alur PPPoE existing. Fokus untuk customer STATIC.</div>
             </div>
             <div class="d-flex gap-2">
                 <?php echo form_open('static-ip-sync/run-sync', array('class' => 'm-0')); ?>
@@ -88,7 +88,7 @@ ob_start();
                 <thead>
                     <tr>
                         <th style="width: 70px;">#</th>
-                        <th>Job</th>
+                        <th>Proses</th>
                         <th style="width: 120px;">Status</th>
                         <th style="width: 180px;">Started</th>
                         <th style="width: 180px;">Finished</th>

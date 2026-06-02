@@ -143,7 +143,7 @@ if (!function_exists('helpdesk_telegram_broadcast')) {
             $legacy = helpdesk_telegram_send_legacy($message, 'HTML', '');
             if (!empty($legacy['success'])) {
                 $total_sent = 1;
-                $messages = array('Fallback legacy dipakai.');
+                $messages = array('Notifikasi berhasil dikirim.');
             } else {
                 $messages[] = '[legacy] ' . (string) ($legacy['message'] ?? 'gagal kirim');
             }

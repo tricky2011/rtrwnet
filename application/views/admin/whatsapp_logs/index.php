@@ -1,7 +1,7 @@
 <?php
 $page_title = 'WhatsApp Logs - ' . app_name();
 $page_heading = 'WhatsApp Gateway Logs';
-$page_subheading = 'Monitoring queue, status pengiriman, response gateway, dan resend pesan billing.';
+$page_subheading = 'Monitoring antrian, status pengiriman, response gateway, dan kirim ulang pesan billing.';
 $active_menu = 'whatsapp';
 $rows = isset($rows) && is_array($rows) ? $rows : array();
 $filters = isset($filters) && is_array($filters) ? $filters : array();
@@ -159,7 +159,7 @@ ob_start();
                                     <?php if (in_array(strtolower((string) ($row['status'] ?? '')), array('failed', 'sent'), true)): ?>
                                         <?php echo form_open('admin-whatsapp/resend/' . (int) ($row['id'] ?? 0), array('class' => 'd-inline')); ?>
                                             <input type="hidden" name="return_to" value="<?php echo html_escape(current_url() . (!empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '')); ?>">
-                                            <button type="submit" class="btn btn-sm btn-outline-success" onclick="return confirm('Kirim ulang pesan ini lewat queue?');">
+                                            <button type="submit" class="btn btn-sm btn-outline-success" onclick="return confirm('Kirim ulang pesan ini lewat antrian?');">
                                                 <?php echo strtolower((string) ($row['status'] ?? '')) === 'failed' ? 'Resend' : 'Kirim Ulang'; ?>
                                             </button>
                                         <?php echo form_close(); ?>

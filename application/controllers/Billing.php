@@ -376,7 +376,7 @@ class Billing extends MY_Controller
             }
 
             log_message('info', '[MANUAL_ISOLIR] username=' . $username . ' remote_ip=' . $remote_ip . ' customer_id=' . $customer_id);
-            $this->session->set_flashdata('success', 'Manual isolir berhasil untuk user PPP `' . $username . '` (IP ' . $remote_ip . ', router_id=' . $router_id . ') ke address-list ISOLIR.');
+            $this->session->set_flashdata('success', 'Manual isolir berhasil untuk user PPP `' . $username . '`.');
         } catch (Throwable $e) {
             log_message('error', '[MANUAL_ISOLIR] ' . $e->getMessage());
             $this->session->set_flashdata('error', 'Manual isolir gagal: ' . $e->getMessage());

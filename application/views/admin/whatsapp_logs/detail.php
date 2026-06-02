@@ -29,7 +29,7 @@ ob_start();
     <a href="<?php echo site_url('admin-whatsapp'); ?>" class="btn btn-sm btn-outline-secondary">Kembali</a>
     <?php if (in_array(strtolower((string) ($log['status'] ?? '')), array('failed', 'sent'), true)): ?>
         <?php echo form_open('admin-whatsapp/resend/' . (int) ($log['id'] ?? 0), array('class' => 'd-inline')); ?>
-            <button type="submit" class="btn btn-sm btn-outline-success" onclick="return confirm('Kirim ulang pesan ini lewat queue?');">Kirim Ulang</button>
+            <button type="submit" class="btn btn-sm btn-outline-success" onclick="return confirm('Kirim ulang pesan ini lewat antrian?');">Kirim Ulang</button>
         <?php echo form_close(); ?>
     <?php endif; ?>
 </div>

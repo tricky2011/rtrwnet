@@ -1242,7 +1242,7 @@ class Billing_automation_model extends CI_Model
                     ->count_all_results();
             }
         } else {
-            // Fallback legacy jika tabel customers tidak tersedia.
+            // Jalur cadangan jika tabel customers tidak tersedia.
             $can_scope_customer_by_router = $router_id !== null
                 && $this->db->table_exists('customer_services')
                 && $this->customer_services_has_column('customer_id')

@@ -715,9 +715,9 @@ class Workorders extends MY_Controller
         $has_retry = !empty($queued_retries);
         $summary = '';
         if ($has_delivery) {
-            $summary = 'Telegram terkirim. sent=' . $sent . ', deduped=' . $deduped . ', failed=' . $failed;
+            $summary = 'Notifikasi Telegram terkirim. Berhasil=' . $sent . ', gagal=' . $failed;
         } elseif ($has_retry) {
-            $summary = 'Telegram belum terkirim langsung, retry masuk queue. queued=' . count($queued_retries) . ', failed=' . $failed;
+            $summary = 'Notifikasi Telegram masuk antrian. Total=' . count($queued_retries) . ', gagal=' . $failed;
         } elseif (!empty($reasons)) {
             $summary = implode(' | ', $reasons);
         } else {

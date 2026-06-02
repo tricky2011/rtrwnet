@@ -7,6 +7,7 @@ class Customer_model extends CI_Model
     protected $fields = array();
     protected $tenant_id = null;
     protected $router_scope_id = null;
+    protected $status_values = null;
 
     public function __construct()
     {
@@ -177,7 +178,10 @@ class Customer_model extends CI_Model
             $payload['deleted'] = 1;
         }
         if (empty($payload) && $this->has_field('status')) {
-            $payload['status'] = 'inactive';
+            $status = $this->resolve_status_value(array('terminated', 'inactive', 'disabled'));
+            if ($status !== null) {
+                $payload['status'] = $status;
+            }
         }
         if ($this->has_field('updated_at')) {
             $payload['updated_at'] = $now;
@@ -615,6 +619,89 @@ class Customer_model extends CI_Model
         if ($this->has_field('deleted')) {
             $qb->where($prefix . 'deleted', 0);
         }
+        if ($this->has_field('status')) {
+            $deleted_statuses = $this->resolve_existing_status_values(array('terminated', 'deleted', 'inactive', 'disabled'));
+            if (!empty($deleted_statuses)) {
+                $qb->where_not_in($prefix . 'status', $deleted_statuses);
+            }
+        }
+    }
+
+    private function resolve_status_value(array $candidates)
+    {
+        $values = $this->get_status_values();
+        if (!empty($values)) {
+            foreach ($candidates as $candidate) {
+                $candidate = strtolower(trim((string) $candidate));
+                if ($candidate !== '' && in_array($candidate, $values, true)) {
+                    return $candidate;
+                }
+            }
+            return null;
+        }
+
+        foreach ($candidates as $candidate) {
+            $candidate = trim((string) $candidate);
+            if ($candidate !== '') {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private function resolve_existing_status_values(array $candidates)
+    {
+        $values = $this->get_status_values();
+        if (empty($values)) {
+            return array_values(array_filter(array_map('trim', $candidates), static function ($value) {
+                return $value !== '';
+            }));
+        }
+
+        $matched = array();
+        foreach ($candidates as $candidate) {
+            $candidate = strtolower(trim((string) $candidate));
+            if ($candidate !== '' && in_array($candidate, $values, true)) {
+                $matched[] = $candidate;
+            }
+        }
+
+        return array_values(array_unique($matched));
+    }
+
+    private function get_status_values()
+    {
+        if ($this->status_values !== null) {
+            return $this->status_values;
+        }
+
+        $this->status_values = array();
+        if (!$this->has_field('status')) {
+            return $this->status_values;
+        }
+
+        $table = (string) $this->db->dbprefix($this->table);
+        if (!preg_match('/^[A-Za-z0-9_]+$/', $table)) {
+            return $this->status_values;
+        }
+
+        $row = $this->db
+            ->query("SHOW COLUMNS FROM `" . $this->db->escape_str($table) . "` LIKE " . $this->db->escape('status'))
+            ->row_array();
+        if (empty($row['Type']) || !preg_match('/^enum\((.*)\)$/i', (string) $row['Type'], $matches)) {
+            return $this->status_values;
+        }
+
+        $values = str_getcsv($matches[1], ',', "'");
+        foreach ($values as $value) {
+            $value = strtolower(trim((string) $value));
+            if ($value !== '') {
+                $this->status_values[] = $value;
+            }
+        }
+
+        return $this->status_values;
     }
 
     private function apply_router_scope_to_list_query(CI_DB_query_builder &$qb, $has_service_join, array $cs_fields)

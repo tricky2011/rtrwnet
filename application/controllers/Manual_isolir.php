@@ -171,7 +171,7 @@ class Manual_isolir extends MY_Controller
 
             return $this->json_response(array(
                 'success' => true,
-                'message' => 'User `' . $username . '` berhasil diisolir di router_id=' . $router_id . '. Remote IP `' . $remote_ip . '` masuk address-list ISOLIR.',
+                'message' => 'User `' . $username . '` berhasil diisolir.',
                 'data' => array(
                     'username' => $username,
                     'remote_ip' => $remote_ip,
@@ -279,7 +279,7 @@ class Manual_isolir extends MY_Controller
 
             return $this->json_response(array(
                 'success' => true,
-                'message' => 'User `' . $username . '` berhasil di-release dari ISOLIR (router_id=' . $router_id . ').',
+                'message' => 'User `' . $username . '` berhasil di-release dari ISOLIR.',
                 'data' => array(
                     'username' => $username,
                     'customer_id' => $customer_id,
@@ -426,7 +426,7 @@ class Manual_isolir extends MY_Controller
             $queue_name = trim((string) $target);
         }
         if ($queue_name === '') {
-            throw new Exception('Queue STATIC tidak ditemukan untuk target `' . $target . '`.');
+            throw new Exception('Target STATIC tidak ditemukan untuk `' . $target . '`.');
         }
 
         $remote_ip = trim((string) ($context['remote_ip'] ?? ''));
@@ -512,7 +512,7 @@ class Manual_isolir extends MY_Controller
             $queue_name = trim((string) $target);
         }
         if ($queue_name === '') {
-            throw new Exception('Queue STATIC tidak ditemukan untuk target `' . $target . '`.');
+            throw new Exception('Target STATIC tidak ditemukan untuk `' . $target . '`.');
         }
 
         $remote_ip = trim((string) ($context['remote_ip'] ?? ''));

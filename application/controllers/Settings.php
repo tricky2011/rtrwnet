@@ -1123,11 +1123,39 @@ class Settings extends MY_Controller
             }
         }
 
+        $this->append_ppp_empty_diagnostics($api, $debug_lines);
+
         return array(
             'success' => false,
-            'message' => 'PPPoE Secret tidak ditemukan atau API tidak memiliki akses.',
+            'message' => 'API terkoneksi, tetapi /ppp/secret/print kosong. Router ini kemungkinan tidak memakai local PPPoE Secret atau pelanggan tersimpan sebagai STATIC/Queue.',
             'data' => array(),
         );
+    }
+
+    private function append_ppp_empty_diagnostics($api, array &$debug_lines)
+    {
+        if (!method_exists($api, 'comm')) {
+            return;
+        }
+
+        $diagnostics = array(
+            'diag_ppp_profiles' => array('/ppp/profile/print', array('.proplist' => '.id,name')),
+            'diag_ppp_active' => array('/ppp/active/print', array('.proplist' => '.id,name,service,address')),
+            'diag_pppoe_servers' => array('/interface/pppoe-server/server/print', array('.proplist' => '.id,interface,service-name,disabled')),
+            'diag_ppp_aaa' => array('/ppp/aaa/print', array()),
+        );
+
+        foreach ($diagnostics as $label => $spec) {
+            try {
+                $rows = $api->comm($spec[0], $spec[1]);
+                $debug_lines[] = $label . '=' . (is_array($rows) ? count($rows) : 0);
+                if ($label === 'diag_ppp_aaa' && is_array($rows) && !empty($rows[0]) && is_array($rows[0])) {
+                    $debug_lines[] = 'diag_ppp_aaa_use_radius=' . (string) ($rows[0]['use-radius'] ?? '-');
+                }
+            } catch (Throwable $e) {
+                $debug_lines[] = $label . '_error=' . $e->getMessage();
+            }
+        }
     }
 
     private function customer_exists_by_username($username, array $username_columns, $router_id = null)

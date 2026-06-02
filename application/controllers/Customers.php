@@ -655,6 +655,18 @@ class Customers extends MY_Controller
 
         $role = (string) $this->session->userdata('role');
         if ($role === 'superadmin') {
+            if ($this->is_static_customer_record($customer)) {
+                $ok = $this->customer_model->soft_delete($id);
+                if (!$ok) {
+                    $this->session->set_flashdata('error', 'Gagal menghapus pelanggan static.');
+                    return redirect('customers');
+                }
+                $this->mark_customer_services_terminated(array($id));
+
+                $this->session->set_flashdata('success', 'Pelanggan static berhasil dihapus.');
+                return redirect('customers');
+            }
+
             $result = $this->hard_delete_customer($id);
             if (empty($result['success'])) {
                 $this->session->set_flashdata('error', (string) ($result['message'] ?? 'Gagal hapus pelanggan.'));
@@ -696,7 +708,18 @@ class Customers extends MY_Controller
             $failed_rows = array();
 
             foreach ($ids as $customer_id) {
-                $result = $this->hard_delete_customer((int) $customer_id);
+                $customer = $this->customer_model->get_by_id((int) $customer_id);
+                if ($customer && $this->is_static_customer_record($customer)) {
+                    $ok = $this->customer_model->soft_delete((int) $customer_id);
+                    if ($ok) {
+                        $this->mark_customer_services_terminated(array((int) $customer_id));
+                        $result = array('success' => true, 'message' => 'Pelanggan static berhasil dihapus.');
+                    } else {
+                        $result = array('success' => false, 'message' => 'Gagal menghapus pelanggan static.');
+                    }
+                } else {
+                    $result = $this->hard_delete_customer((int) $customer_id);
+                }
                 if (!empty($result['success'])) {
                     $success++;
                 } else {
@@ -750,6 +773,30 @@ class Customers extends MY_Controller
         return $this->json_response(200, $this->bulk_response('success', 'Bulk hapus berhasil diproses.', array(
             'processed' => count($ids),
         )));
+    }
+
+    private function is_static_customer_record($customer)
+    {
+        if (is_object($customer)) {
+            $customer = (array) $customer;
+        }
+        if (!is_array($customer)) {
+            return false;
+        }
+
+        $connection_type = strtoupper(trim((string) ($customer['connection_type'] ?? '')));
+        if ($connection_type === 'STATIC') {
+            return true;
+        }
+
+        $service_mode = strtolower(trim((string) ($customer['service_mode'] ?? '')));
+        if ($service_mode === 'static') {
+            return true;
+        }
+
+        $queue_name = trim((string) ($customer['queue_name'] ?? ''));
+        $pppoe_username = trim((string) ($customer['pppoe_username'] ?? ''));
+        return $queue_name !== '' && $pppoe_username === '';
     }
 
     public function bulk_disable()
@@ -3228,7 +3275,7 @@ class Customers extends MY_Controller
 
         return array(
             'success' => true,
-            'message' => 'Secret `' . $username . '` berhasil di-disable (router_id=' . $router_id . ').',
+            'message' => 'Akses PPP `' . $username . '` berhasil dinonaktifkan.',
         );
     }
 
@@ -3282,15 +3329,11 @@ class Customers extends MY_Controller
     private function build_customer_mikrotik_status_message(array $result)
     {
         $delivery = strtolower(trim((string) ($result['delivery'] ?? '')));
-        $job_id = (int) ($result['job_id'] ?? 0);
 
         if (!empty($result['success']) && $delivery === 'queued') {
-            $message = 'PPP Secret MikroTik masuk queue provisioning';
-            if ($job_id > 0) {
-                $message .= ' (Job ID: ' . $job_id . ')';
-            }
+            $message = 'Pembuatan akses PPP masuk antrian';
 
-            return $message . ', menunggu worker background.';
+            return $message . '.';
         }
 
         if (!empty($result['success'])) {
@@ -3303,15 +3346,15 @@ class Customers extends MY_Controller
     private function build_customer_telegram_status_message(array $result)
     {
         $delivery = strtolower(trim((string) ($result['delivery'] ?? '')));
-        $job_id = (int) ($result['job_id'] ?? 0);
+
+        if (!empty($result['skipped']) || $delivery === 'skipped') {
+            return 'Notifikasi teknisi belum dikirim: ' . (string) ($result['message'] ?? 'konfigurasi Telegram belum lengkap');
+        }
 
         if (!empty($result['success']) && $delivery === 'queued') {
-            $message = 'Notifikasi Telegram teknisi masuk queue';
-            if ($job_id > 0) {
-                $message .= ' (Job ID: ' . $job_id . ')';
-            }
+            $message = 'Notifikasi teknisi masuk antrian';
 
-            return $message . ', menunggu worker background.';
+            return $message . '.';
         }
 
         if (!empty($result['success'])) {
@@ -3361,13 +3404,13 @@ class Customers extends MY_Controller
             if (empty($dispatch['success'])) {
                 return array(
                     'success' => false,
-                    'message' => 'Gagal queue provisioning MikroTik: ' . (string) ($dispatch['message'] ?? 'unknown'),
+                    'message' => 'Gagal menambahkan pembuatan akses PPP ke antrian: ' . (string) ($dispatch['message'] ?? 'unknown'),
                 );
             }
 
             return array(
                 'success' => true,
-                'message' => 'Job provisioning MikroTik masuk queue (Job ID: ' . (int) ($dispatch['job_id'] ?? 0) . ').',
+                'message' => 'Pembuatan akses PPP masuk antrian.',
                 'job_id' => (int) ($dispatch['job_id'] ?? 0),
                 'delivery' => 'queued',
             );
@@ -4084,11 +4127,17 @@ class Customers extends MY_Controller
     private function send_new_installation_telegram(array $context)
     {
         $customer_id = (int) ($context['customer_id'] ?? 0);
-        $router_id = $this->resolve_positive_router_id(
-            (int) ($context['router_id'] ?? 0),
-            0,
-            $customer_id
-        );
+        $router_id = 0;
+        $router_candidates = array((int) ($context['router_id'] ?? 0));
+        if ($customer_id > 0) {
+            $router_candidates[] = (int) $this->resolve_router_id_by_customer_id($customer_id);
+        }
+        foreach ($router_candidates as $router_candidate) {
+            if ($router_candidate > 0 && $this->router_id_exists_any_scope($router_candidate)) {
+                $router_id = $router_candidate;
+                break;
+            }
+        }
         $wo_number = trim((string) ($context['wo_number'] ?? '-'));
         $customer_name = trim((string) ($context['customer_name'] ?? '-'));
         $address = trim((string) ($context['address'] ?? '-'));
@@ -4146,6 +4195,27 @@ class Customers extends MY_Controller
             );
         }
 
+        if ($router_id <= 0) {
+            return array(
+                'success' => false,
+                'message' => 'Router pelanggan belum valid. Notifikasi teknisi belum dikirim.',
+                'delivery' => 'skipped',
+                'skipped' => true,
+            );
+        }
+
+        $this->load->helper('tenant');
+        $target = telegram_get_groups_by_type('teknisi', $router_id, false);
+        if (empty($target['success'])) {
+            return array(
+                'success' => false,
+                'message' => 'Grup Telegram teknisi untuk router ini belum tersedia.',
+                'delivery' => 'skipped',
+                'skipped' => true,
+                'router_id' => $router_id,
+            );
+        }
+
         if ($this->is_async_queue_enabled()) {
             $dispatch = $this->jobdispatcher->dispatch(
                 null,
@@ -4153,6 +4223,8 @@ class Customers extends MY_Controller
                 array(
                     'group_type' => 'teknisi',
                     'router_id' => $router_id > 0 ? $router_id : null,
+                    'allow_router_fallback' => false,
+                    'allow_legacy_fallback' => false,
                     'message' => $message,
                     'parse_mode' => 'HTML',
                     'inline_keyboard' => $copy_keyboard,
@@ -4163,7 +4235,7 @@ class Customers extends MY_Controller
             if (!empty($dispatch['success'])) {
                 return array(
                     'success' => true,
-                    'message' => 'Job Telegram masuk queue (Job ID: ' . (int) ($dispatch['job_id'] ?? 0) . ').',
+                    'message' => 'Notifikasi teknisi masuk antrian.',
                     'job_id' => (int) ($dispatch['job_id'] ?? 0),
                     'delivery' => 'queued',
                 );
@@ -4171,77 +4243,15 @@ class Customers extends MY_Controller
 
             return array(
                 'success' => false,
-                'message' => 'Gagal queue Telegram: ' . (string) ($dispatch['message'] ?? 'unknown'),
+                'message' => 'Gagal menambahkan notifikasi ke antrian: ' . (string) ($dispatch['message'] ?? 'unknown'),
             );
         }
 
-        $this->load->model('settings_model');
-        $tg = $this->settings_model->get_telegram_settings();
-        $bot_token = trim((string) ($tg['bot_token'] ?? ''));
-        $chat_id = trim((string) ($tg['chat_id_admin'] ?? ''));
-        $enabled = (int) ($tg['enable_notification'] ?? 0) === 1;
-
-        if (!$enabled) {
-            return array('success' => false, 'message' => 'Notifikasi Telegram belum diaktifkan.');
+        $options = array('parse_mode' => 'HTML');
+        if (!empty($copy_keyboard)) {
+            $options['reply_markup'] = array('inline_keyboard' => $copy_keyboard);
         }
-        if ($bot_token === '' || $chat_id === '') {
-            return array('success' => false, 'message' => 'Bot token/chat id Telegram belum di-set.');
-        }
-
-        $this->load->library('telegram_service');
-        if ($customer_id > 0) {
-            $result = $this->telegram_service->send_message_with_inline_keyboard(
-                $bot_token,
-                $chat_id,
-                $message,
-                $copy_keyboard,
-                'HTML'
-            );
-
-            // Fallback untuk client/library lama yang belum support copy_text.
-            if (empty($result['success'])) {
-                $callback_secret = $this->get_provisioning_callback_secret();
-                if ($callback_secret !== '') {
-                    $legacy_keyboard = array(
-                        array(
-                            array(
-                                'text' => 'Copy User PPP',
-                                'callback_data' => 'WO|USR|' . $customer_id . '|' . $this->build_telegram_callback_signature($customer_id, 'USR', $callback_secret),
-                            ),
-                            array(
-                                'text' => 'Copy Pass PPP',
-                                'callback_data' => 'WO|PWD|' . $customer_id . '|' . $this->build_telegram_callback_signature($customer_id, 'PWD', $callback_secret),
-                            ),
-                        ),
-                        array(
-                            array(
-                                'text' => 'Copy VLAN',
-                                'callback_data' => 'WO|VLAN|' . $customer_id . '|' . $this->build_telegram_callback_signature($customer_id, 'VLAN', $callback_secret),
-                            ),
-                        ),
-                    );
-
-                    $fallback_result = $this->telegram_service->send_message_with_inline_keyboard(
-                        $bot_token,
-                        $chat_id,
-                        $message,
-                        $legacy_keyboard,
-                        'HTML'
-                    );
-                    if (!empty($fallback_result['success'])) {
-                        $result = $fallback_result;
-                    }
-                } else {
-                    log_message('error', '[CUSTOMERS][TELEGRAM_WO] provisioning callback secret missing; skip legacy callback keyboard.');
-                    $fallback_result = $this->telegram_service->send_message($bot_token, $chat_id, $message, 'HTML');
-                    if (!empty($fallback_result['success'])) {
-                        $result = $fallback_result;
-                    }
-                }
-            }
-        } else {
-            $result = $this->telegram_service->send_message($bot_token, $chat_id, $message, 'HTML');
-        }
+        $result = telegram_dispatch_to_groups((array) ($target['groups'] ?? array()), $message, $options);
 
         if (empty($result['success'])) {
             log_message('error', '[CUSTOMERS][TELEGRAM_WO] send failed: ' . json_encode($result));

@@ -15,6 +15,7 @@ $can_billing = hasRole(array('superadmin', 'admin', 'demo'), $role);
 $can_workorders = hasRole(array('superadmin', 'admin', 'teknisi'), $role);
 $can_helpdesk = hasRole(array('superadmin', 'admin', 'teknisi'), $role);
 $can_cashflow = hasRole(array('superadmin', 'admin'), $role);
+$can_hotspot = hasRole(array('superadmin', 'admin'), $role);
 $can_router_management = hasRole(array('superadmin', 'admin'), $role);
 $can_network = hasRole(array('superadmin', 'admin'), $role);
 $can_settings = hasRole(array('superadmin'), $role);
@@ -35,7 +36,7 @@ $is_settings_database_page = strpos($current_uri, 'settings/database') === 0;
 $settings_menu_active = $is_settings_router_page || $is_settings_router_acs_page || $is_settings_telegram_page || $is_settings_database_page;
 
 $access_active = $can_customer && in_array($active_menu, array('customers', 'customer_upgrade', 'ppp_profiles', 'ip_pools'), true);
-$operations_active = ($can_billing || $can_cashflow) && in_array($active_menu, array('billing', 'manual_isolir', 'pppoe_sync', 'static_ip_sync', 'router_sync', 'ont_remote', 'cashflow'), true);
+$operations_active = ($can_billing || $can_cashflow || $can_hotspot) && in_array($active_menu, array('billing', 'manual_isolir', 'pppoe_sync', 'static_ip_sync', 'router_sync', 'ont_remote', 'cashflow', 'hotspot'), true);
 $network_active = $can_network && in_array($active_menu, array('fiber_network_map', 'network_nodes', 'master_locations', 'master_olts'), true);
 $support_active = ($can_workorders || $can_helpdesk || $can_monitoring) && in_array($active_menu, array('workorders', 'teknisi_dashboard', 'helpdesk', 'tickets', 'monitoring'), true);
 $router_management_active = $can_router_management && ($is_settings_router_page || $is_settings_router_acs_page);
@@ -146,7 +147,7 @@ if (($can_billing || $can_cashflow) && isset($this->db) && is_object($this->db) 
             </div>
             <?php endif; ?>
 
-            <?php if ($can_billing || $can_cashflow): ?>
+            <?php if ($can_billing || $can_cashflow || $can_hotspot): ?>
             <div class="sidebar-group">
                 <button class="sidebar-section-toggle <?php echo $operations_active ? '' : 'collapsed'; ?>" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarSectionOperations" aria-expanded="<?php echo $operations_active ? 'true' : 'false'; ?>">
                     <span class="sidebar-section-title"><i class="ti ti-bolt"></i><span>Operations</span></span>
@@ -165,6 +166,9 @@ if (($can_billing || $can_cashflow) && isset($this->db) && is_object($this->db) 
                         </a>
                         <?php endif; ?>
                         <a href="<?php echo site_url('router-sync'); ?>" class="sidebar-link <?php echo in_array($active_menu, array('router_sync', 'pppoe_sync', 'static_ip_sync'), true) ? 'active' : ''; ?>"><i class="ti ti-router"></i><span>Router Sync</span></a>
+                        <?php if ($can_hotspot): ?>
+                        <a href="<?php echo site_url('hotspot'); ?>" class="sidebar-link <?php echo $active_menu === 'hotspot' ? 'active' : ''; ?>"><i class="ti ti-ticket"></i><span>Hotspot</span></a>
+                        <?php endif; ?>
                         <?php if ($can_cashflow): ?>
                         <a href="<?php echo site_url('cashflow'); ?>" class="sidebar-link <?php echo $active_menu === 'cashflow' ? 'active' : ''; ?>"><i class="ti ti-credit-card"></i><span>Cashflow</span></a>
                         <?php endif; ?>
