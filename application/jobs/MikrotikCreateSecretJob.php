@@ -40,7 +40,11 @@ class MikrotikCreateSecretJob
             $this->CI->load->library('mikrotik_api');
             $router_cfg = $this->resolve_router_config($tenant_id, $router_id);
             if (!empty($router_cfg['success']) && !empty($router_cfg['config'])) {
-                $this->CI->mikrotik_api->configure($router_cfg['config']);
+                $config = (array) $router_cfg['config'];
+                $config['retry_max'] = 1;
+                $config['retry_delay'] = 0;
+                $config['timeout'] = max(3, min((int) ($config['timeout'] ?? 5), 5));
+                $this->CI->mikrotik_api->configure($config);
             } elseif ($router_id > 0 && !empty($router_cfg['message'])) {
                 return array(
                     'success' => false,
@@ -51,10 +55,11 @@ class MikrotikCreateSecretJob
 
             $find = $this->CI->mikrotik_api->command_safe('/ppp/secret/print', array('?name' => $username));
             if (empty($find['success'])) {
+                $error = (string) ($find['error'] ?? 'unknown');
                 return array(
                     'success' => false,
-                    'message' => 'Gagal query secret: ' . (string) ($find['error'] ?? 'unknown'),
-                    'retryable' => true,
+                    'message' => 'Gagal query secret: ' . $error,
+                    'retryable' => !$this->is_auth_or_config_failure($error),
                 );
             }
 
@@ -86,10 +91,11 @@ class MikrotikCreateSecretJob
                     $set = $this->CI->mikrotik_api->command_safe('/ppp/secret/set', $params);
                 }
                 if (empty($set['success'])) {
+                    $error = (string) ($set['error'] ?? 'unknown');
                     return array(
                         'success' => false,
-                        'message' => 'Gagal update secret `' . $username . '`: ' . (string) ($set['error'] ?? 'unknown'),
-                        'retryable' => true,
+                        'message' => 'Gagal update secret `' . $username . '`: ' . $error,
+                        'retryable' => !$this->is_auth_or_config_failure($error),
                     );
                 }
 
@@ -125,10 +131,11 @@ class MikrotikCreateSecretJob
                         'retryable' => false,
                     );
                 }
+                $error_message = (string) ($add['error'] ?? 'unknown');
                 return array(
                     'success' => false,
-                    'message' => 'Gagal create secret `' . $username . '`: ' . (string) ($add['error'] ?? 'unknown'),
-                    'retryable' => true,
+                    'message' => 'Gagal create secret `' . $username . '`: ' . $error_message,
+                    'retryable' => !$this->is_auth_or_config_failure($error_message),
                 );
             }
 
@@ -182,7 +189,7 @@ class MikrotikCreateSecretJob
         }
 
         $password = '';
-        $password_raw = trim((string) ($router['password'] ?? $router['api_password_enc'] ?? ''));
+        $password_raw = $this->first_non_empty($router, array('password', 'api_password_enc', 'password_enc', 'pass'));
         if ($password_raw !== '') {
             $decrypted = '';
             if (isset($this->CI->settings_model) && method_exists($this->CI->settings_model, 'decrypt_secret')) {
@@ -209,8 +216,8 @@ class MikrotikCreateSecretJob
             'success' => true,
             'message' => 'OK',
             'config' => array(
-                'host' => (string) ($router['ip_address'] ?? $router['api_host'] ?? ''),
-                'username' => (string) ($router['username'] ?? $router['api_username'] ?? ''),
+                'host' => $this->first_non_empty($router, array('ip_address', 'api_host', 'host')),
+                'username' => $this->first_non_empty($router, array('username', 'api_username', 'user')),
                 'password' => $password,
                 'api_port' => (int) ($router['api_port'] ?? 8728),
                 'use_ssl' => !empty($router['use_ssl']),
@@ -236,5 +243,33 @@ class MikrotikCreateSecretJob
         }
 
         return array();
+    }
+
+    private function first_non_empty(array $row, array $keys)
+    {
+        foreach ($keys as $key) {
+            if (!array_key_exists($key, $row)) {
+                continue;
+            }
+
+            $value = trim((string) $row[$key]);
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return '';
+    }
+
+    private function is_auth_or_config_failure($message)
+    {
+        $message = strtolower((string) $message);
+        foreach (array('authentication failed', 'invalid user', 'invalid password', 'konfigurasi mikrotik belum lengkap') as $needle) {
+            if (strpos($message, $needle) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

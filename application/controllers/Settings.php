@@ -5,24 +5,27 @@ class Settings extends MY_Controller
 {
     public function __construct()
     {
-        parent::__construct();
-        $method = strtolower((string) $this->router->fetch_method());
-        $admin_allowed_methods = array(
-            'telegram',
-            'save_telegram_group',
-            'delete_telegram_group',
-            'test_telegram_dispatch',
-        );
-        if (in_array($method, $admin_allowed_methods, true)) {
-            $this->require_role(
-                array('superadmin', 'admin'),
-                'Akses ditolak. Hanya superadmin/admin yang dapat mengelola Telegram Group.'
+        $is_cli = (PHP_SAPI === 'cli');
+        parent::__construct(!$is_cli);
+        if (!$is_cli) {
+            $method = strtolower((string) $this->router->fetch_method());
+            $admin_allowed_methods = array(
+                'telegram',
+                'save_telegram_group',
+                'delete_telegram_group',
+                'test_telegram_dispatch',
             );
-        } else {
-            $this->require_module_access(
-                'settings',
-                'Akses ditolak. Hanya superadmin yang dapat mengakses System Settings.'
-            );
+            if (in_array($method, $admin_allowed_methods, true)) {
+                $this->require_role(
+                    array('superadmin', 'admin'),
+                    'Akses ditolak. Hanya superadmin/admin yang dapat mengelola Telegram Group.'
+                );
+            } else {
+                $this->require_module_access(
+                    'settings',
+                    'Akses ditolak. Hanya superadmin yang dapat mengakses System Settings.'
+                );
+            }
         }
         $this->load->database();
         $this->load->model('settings_model');
@@ -710,7 +713,7 @@ class Settings extends MY_Controller
 
     public function sync_pppoe($router_id = null)
     {
-        if (!$this->is_post_request()) {
+        if (!$this->input->is_cli_request() && !$this->is_post_request()) {
             return;
         }
 
@@ -966,9 +969,12 @@ class Settings extends MY_Controller
 
     private function resolve_router_for_pppoe_sync($router_id_raw = null)
     {
-        $role = function_exists('normalizeRole')
+        $is_cli = $this->input->is_cli_request();
+        $role = $is_cli
+            ? 'superadmin'
+            : (function_exists('normalizeRole')
             ? normalizeRole((string) $this->session->userdata('role'))
-            : strtolower(trim((string) $this->session->userdata('role')));
+            : strtolower(trim((string) $this->session->userdata('role'))));
 
         $requested = $router_id_raw;
         if ($requested === null || $requested === '') {
