@@ -90,7 +90,7 @@ class Billing_automation_service
             'router_scope_label' => ($router_id !== null && $router_id > 0)
                 ? ('Router #' . $router_id . ' - ' . ($router_names[$router_id] ?? '-'))
                 : 'Semua Router',
-            'due_rule' => 'billing_cycle_day = install_date day (last-day fallback)',
+            'due_rule' => 'due_date_day customer, fallback install_date day',
             'total_customer' => count($customers),
             'total_due_target' => 0,
             'total_created' => 0,
@@ -139,7 +139,7 @@ class Billing_automation_service
             }
 
             $resolved_install_date = $this->resolve_install_date_for_customer($customer);
-            $cycle_day = $this->extract_cycle_day($resolved_install_date);
+            $cycle_day = $this->resolve_cycle_day_for_customer($customer, $resolved_install_date);
             $due_date = $this->calculate_due_date_from_cycle_day($cycle_day, $period_start);
 
             if ($daily_mode) {
@@ -182,7 +182,7 @@ class Billing_automation_service
                 'paid_amount' => 0,
                 'balance_amount' => $total_amount,
                 'status' => 'issued',
-                'notes' => 'Auto rolling invoice. cycle_day=' . $cycle_day . '; install_date=' . ($resolved_install_date !== '' ? $resolved_install_date : 'unknown'),
+                'notes' => 'Auto rolling invoice. due_day=' . $cycle_day . '; install_date=' . ($resolved_install_date !== '' ? $resolved_install_date : 'unknown'),
                 'created_at' => $now,
                 'updated_at' => $now,
             );
@@ -444,6 +444,18 @@ class Billing_automation_service
         }
 
         return 1;
+    }
+
+    private function resolve_cycle_day_for_customer(array $customer, $install_date)
+    {
+        foreach (array('due_date_day', 'billing_date') as $column) {
+            $day = (int) ($customer[$column] ?? 0);
+            if ($day >= 1 && $day <= 31) {
+                return $day;
+            }
+        }
+
+        return $this->extract_cycle_day($install_date);
     }
 
     private function calculate_due_date_from_cycle_day($cycle_day, $period_start)

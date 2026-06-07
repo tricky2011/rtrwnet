@@ -1193,6 +1193,9 @@ class Customers extends MY_Controller
         if ($this->has_field('technician_id')) {
             $this->form_validation->set_rules('technician_id', 'Assign teknisi', 'trim|integer');
         }
+        if ($this->has_field('due_date_day')) {
+            $this->form_validation->set_rules('due_date_day', 'Tanggal jatuh tempo', 'trim|integer|greater_than_equal_to[1]|less_than_equal_to[31]');
+        }
     }
 
     private function resolve_customer_service_mode($customer = null, $customer_id = 0)
@@ -1440,6 +1443,7 @@ class Customers extends MY_Controller
             'install_date',
             'installation_date',
             'join_date',
+            'due_date_day',
             'status',
             'technician_id',
             'router_id',
@@ -1464,6 +1468,9 @@ class Customers extends MY_Controller
             }
 
             if ($field === 'profile_id' || $field === 'ppp_profile_id' || $field === 'technician_id' || $field === 'router_id' || $field === 'odp_id') {
+                $value = ($value === '') ? null : (int) $value;
+            }
+            if ($field === 'due_date_day') {
                 $value = ($value === '') ? null : (int) $value;
             }
 
@@ -1503,8 +1510,34 @@ class Customers extends MY_Controller
             }
             $payload['join_date'] = $join_date;
         }
+        if ($this->has_field('due_date_day')) {
+            $due_day = (int) ($payload['due_date_day'] ?? 0);
+            if ($due_day < 1 || $due_day > 31) {
+                $default_due_day = $this->default_due_date_day_for_router((int) ($payload['router_id'] ?? 0));
+                $payload['due_date_day'] = $default_due_day > 0 ? $default_due_day : null;
+            }
+        }
 
         return $payload;
+    }
+
+    private function default_due_date_day_for_router($router_id)
+    {
+        $router_id = (int) $router_id;
+        if ($router_id <= 0 || !$this->db->table_exists('routers')) {
+            return 0;
+        }
+
+        $row = $this->db
+            ->select('name')
+            ->from('routers')
+            ->where('id', $router_id)
+            ->limit(1)
+            ->get()
+            ->row_array();
+
+        $router_name = strtolower(trim((string) ($row['name'] ?? '')));
+        return $router_name === 'kalisari' ? 20 : 0;
     }
 
     private function resolve_selected_technician_id($customer = null)
@@ -2307,7 +2340,7 @@ class Customers extends MY_Controller
         $period_end = date('Y-m-t', strtotime($period_start));
         $issue_date = date('Y-m-d');
         $install_date = $this->resolve_customer_install_date((int) $customer_id);
-        $due_date = $this->calculate_due_date_from_install($install_date, $period_start);
+        $due_date = $this->calculate_due_date_for_customer((int) $customer_id, $install_date, $period_start);
         $valid_service_id = $this->resolve_valid_customer_service_id((int) $customer_id, (int) $customer_service_id);
 
         $subtotal = (float) $price;
@@ -2341,7 +2374,7 @@ class Customers extends MY_Controller
             'paid_amount' => 0,
             'balance_amount' => $total_amount,
             'status' => 'issued',
-            'notes' => 'Auto invoice saat customer dibuat (due=install+5).',
+            'notes' => 'Auto invoice saat customer dibuat.',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         );
@@ -3591,7 +3624,7 @@ class Customers extends MY_Controller
         $period_end = date('Y-m-t', strtotime($period_start));
         $issue_date = date('Y-m-d');
         $install_date = $this->resolve_customer_install_date((int) $customer_id);
-        $due_date = $this->calculate_due_date_from_install($install_date, $period_start);
+        $due_date = $this->calculate_due_date_for_customer((int) $customer_id, $install_date, $period_start);
         $valid_service_id = $this->resolve_valid_customer_service_id((int) $customer_id, (int) $customer_service_id);
 
         $subtotal = (float) $price;
@@ -3614,7 +3647,7 @@ class Customers extends MY_Controller
             'paid_amount' => 0,
             'balance_amount' => $total_amount,
             'status' => 'issued',
-            'notes' => $note !== '' ? ($note . ' (due=install+5)') : 'Bulk generate invoice (due=install+5)',
+            'notes' => $note !== '' ? $note : 'Bulk generate invoice',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         );
@@ -4447,6 +4480,75 @@ class Customers extends MY_Controller
         }
 
         return '';
+    }
+
+    private function calculate_due_date_for_customer($customer_id, $install_date, $period_start)
+    {
+        $due_day = $this->resolve_customer_due_date_day((int) $customer_id);
+        if ($due_day > 0) {
+            return $this->calculate_due_date_from_day($due_day, $period_start);
+        }
+
+        return $this->calculate_due_date_from_install($install_date, $period_start);
+    }
+
+    private function resolve_customer_due_date_day($customer_id)
+    {
+        $customer_id = (int) $customer_id;
+        if ($customer_id <= 0 || !$this->db->table_exists('customers')) {
+            return 0;
+        }
+
+        $fields = $this->db->list_fields('customers');
+        $select = array();
+        foreach (array('due_date_day', 'billing_date') as $column) {
+            if (in_array($column, $fields, true)) {
+                $select[] = $column;
+            }
+        }
+        if (empty($select)) {
+            return 0;
+        }
+
+        $row = $this->db
+            ->select(implode(', ', $select), false)
+            ->from('customers')
+            ->where('id', $customer_id)
+            ->limit(1)
+            ->get()
+            ->row_array();
+
+        foreach ($select as $column) {
+            $day = (int) ($row[$column] ?? 0);
+            if ($day >= 1 && $day <= 31) {
+                return $day;
+            }
+        }
+
+        return 0;
+    }
+
+    private function calculate_due_date_from_day($due_day, $period_start)
+    {
+        $period_start = trim((string) $period_start);
+        if (!$this->is_valid_ymd_date($period_start)) {
+            $period_start = date('Y-m-01');
+        }
+
+        $period_ts = strtotime($period_start);
+        $year = (int) date('Y', $period_ts);
+        $month = (int) date('m', $period_ts);
+        $last_day = (int) date('t', $period_ts);
+
+        $due_day = (int) $due_day;
+        if ($due_day < 1) {
+            $due_day = 1;
+        }
+        if ($due_day > $last_day) {
+            $due_day = $last_day;
+        }
+
+        return sprintf('%04d-%02d-%02d', $year, $month, $due_day);
     }
 
     private function calculate_due_date_from_install($install_date, $period_start)

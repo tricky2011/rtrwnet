@@ -182,6 +182,7 @@ ob_start();
                         <th>Teknisi</th>
                         <th>Status</th>
                         <th>Tanggal Pasang</th>
+                        <th>Jatuh Tempo</th>
                         <th>Harga Paket</th>
                         <th class="text-end pe-3">Aksi</th>
                     </tr>
@@ -189,7 +190,7 @@ ob_start();
                 <tbody>
                     <?php if (empty($customers)): ?>
                     <tr>
-                        <td class="ps-3 text-muted" colspan="<?php echo $can_manage_bulk ? '8' : '7'; ?>">Belum ada data pelanggan.</td>
+                        <td class="ps-3 text-muted" colspan="<?php echo $can_manage_bulk ? '9' : '8'; ?>">Belum ada data pelanggan.</td>
                     </tr>
                     <?php else: ?>
                         <?php foreach ($customers as $row): ?>
@@ -228,6 +229,10 @@ ob_start();
                             $install_date = $parse_install_date((string) $row->join_date);
                         }
                         $install_date_label = $install_date !== '' ? date('d-m-Y', strtotime($install_date)) : '-';
+                        $due_date_day = isset($row->due_date_day) ? (int) $row->due_date_day : 0;
+                        $due_date_label = ($due_date_day >= 1 && $due_date_day <= 31)
+                            ? ('Tanggal ' . $due_date_day)
+                            : '-';
                         $display_name = !empty($row->full_name)
                             ? (string) $row->full_name
                             : (!empty($row->nama) ? (string) $row->nama : '-');
@@ -252,6 +257,7 @@ ob_start();
                                 <span class="badge <?php echo html_escape($status['class']); ?>"><?php echo html_escape($status['label']); ?></span>
                             </td>
                             <td><?php echo html_escape($install_date_label); ?></td>
+                            <td><?php echo html_escape($due_date_label); ?></td>
                             <td>Rp <?php echo number_format($package_price, 0, ',', '.'); ?></td>
                             <td class="text-end pe-3">
                                 <div class="d-inline-flex flex-column flex-sm-row gap-1 customer-row-actions">

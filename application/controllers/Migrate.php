@@ -11,20 +11,14 @@ class Migrate extends CI_Controller
             show_error('Akses hanya melalui CLI.', 403);
         }
 
-        // Load migration config then force-enable for CLI runner.
-        $this->config->load('migration', true);
-        $this->config->set_item('migration_enabled', true);
-        $this->config->set_item('migration_type', 'timestamp');
-        $this->config->set_item('migration_auto_latest', false);
-        $this->config->set_item('migration_version', 0);
-        if (!$this->config->item('migration_path')) {
-            $this->config->set_item('migration_path', APPPATH . 'migrations/');
-        }
-        if (!$this->config->item('migration_table')) {
-            $this->config->set_item('migration_table', 'migrations');
-        }
-
-        $this->load->library('migration');
+        $this->load->library('migration', array(
+            'migration_enabled' => true,
+            'migration_type' => 'timestamp',
+            'migration_auto_latest' => false,
+            'migration_version' => 0,
+            'migration_path' => APPPATH . 'migrations/',
+            'migration_table' => 'migrations',
+        ));
     }
 
     public function latest()

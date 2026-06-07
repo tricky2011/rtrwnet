@@ -1083,6 +1083,12 @@ class Static_ip_sync_model extends CI_Model
         if ($this->has_customer_field('router_id') && $this->active_router_id > 0) {
             $payload['router_id'] = (int) $this->active_router_id;
         }
+        if ($this->has_customer_field('due_date_day')) {
+            $due_date_day = $this->default_due_date_day_for_active_router();
+            if ($due_date_day > 0) {
+                $payload['due_date_day'] = $due_date_day;
+            }
+        }
         if ($this->has_customer_field('queue_name')) {
             $payload['queue_name'] = $safe_name;
         }
@@ -1139,6 +1145,23 @@ class Static_ip_sync_model extends CI_Model
         }
 
         return $this->fill_required_defaults($payload);
+    }
+
+    private function default_due_date_day_for_active_router()
+    {
+        $router_name = strtolower(trim((string) $this->active_router_name));
+        if ($router_name === '' && $this->active_router_id > 0 && $this->db->table_exists('routers')) {
+            $row = $this->db
+                ->select('name')
+                ->from('routers')
+                ->where('id', (int) $this->active_router_id)
+                ->limit(1)
+                ->get()
+                ->row_array();
+            $router_name = strtolower(trim((string) ($row['name'] ?? '')));
+        }
+
+        return $router_name === 'kalisari' ? 20 : 0;
     }
 
     private function resolve_static_package_from_queue(array $queue_row)

@@ -239,6 +239,20 @@ ob_start();
                 </select>
             </div>
 
+            <?php if ($has_field('due_date_day')): ?>
+            <div class="col-md-6">
+                <label class="form-label">Tanggal Jatuh Tempo</label>
+                <input
+                    type="number"
+                    class="form-control"
+                    name="due_date_day"
+                    min="1"
+                    max="31"
+                    value="<?php echo html_escape($field_value('due_date_day')); ?>"
+                >
+            </div>
+            <?php endif; ?>
+
             <div class="col-md-6 pppoe-field">
                 <label class="form-label">Username PPP</label>
                 <input type="text" class="form-control" name="pppoe_username" id="pppoe_username" value="<?php echo html_escape($username_value); ?>" <?php echo $selected_service_mode === 'pppoe' ? 'required' : ''; ?>>

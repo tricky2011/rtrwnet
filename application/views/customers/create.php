@@ -175,10 +175,23 @@ ob_start();
             <div class="border rounded p-3">
                 <div class="fw-semibold mb-3">2. Data Instalasi</div>
                 <div class="row g-3">
-                    <div class="col-md-6">
+                    <div class="col-md-3">
                         <label class="form-label">Tanggal Instalasi</label>
                         <input type="date" class="form-control" name="<?php echo html_escape($install_field); ?>" value="<?php echo html_escape(set_value($install_field, date('Y-m-d'))); ?>" required>
                     </div>
+                    <?php if ($has_field('due_date_day')): ?>
+                    <div class="col-md-3">
+                        <label class="form-label">Tanggal Jatuh Tempo</label>
+                        <input
+                            type="number"
+                            class="form-control"
+                            name="due_date_day"
+                            min="1"
+                            max="31"
+                            value="<?php echo html_escape(set_value('due_date_day')); ?>"
+                        >
+                    </div>
+                    <?php endif; ?>
                     <div class="col-md-3">
                         <label class="form-label">Latitude</label>
                         <input type="text" class="form-control" name="latitude" id="latitude" value="<?php echo html_escape(set_value('latitude')); ?>" placeholder="-6.9123">
