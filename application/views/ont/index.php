@@ -11,6 +11,12 @@ $status_filter = isset($status_filter) ? (string) $status_filter : '';
 $pagination = isset($pagination) ? (string) $pagination : '';
 $total_rows = isset($total_rows) ? (int) $total_rows : count($rows);
 $scope_router_id = isset($scope_router_id) ? (int) $scope_router_id : 0;
+$ont_return_url = uri_string();
+$ont_query_string = (string) $this->input->server('QUERY_STRING');
+if ($ont_query_string !== '') {
+    $ont_return_url .= '?' . $ont_query_string;
+}
+$ont_sync_path = $scope_router_id > 0 ? 'ont/sync/' . $scope_router_id : 'ont/sync';
 
 $build_ont_url = function ($path, array $query = array()) use ($scope_router_id) {
     $url = site_url($path);
@@ -77,11 +83,12 @@ ob_start();
             <a href="<?php echo html_escape($build_ont_url('ont', array('status' => 'offline'))); ?>" class="btn btn-sm btn-outline-danger">Offline</a>
             <a href="<?php echo html_escape($build_ont_url('ont')); ?>" class="btn btn-sm btn-outline-secondary">Semua</a>
             <?php if (hasRole(array('superadmin', 'admin'))): ?>
-                <?php if ($scope_router_id > 0): ?>
-                    <a href="<?php echo site_url('ont/sync/' . $scope_router_id); ?>" class="btn btn-sm btn-primary">Sync Sekarang</a>
-                <?php else: ?>
-                    <a href="<?php echo site_url('ont/sync'); ?>" class="btn btn-sm btn-primary">Sync Sekarang</a>
-                <?php endif; ?>
+                <?php echo form_open($ont_sync_path, array('class' => 'd-inline', 'onsubmit' => "return confirm('Jalankan summon all ONT dari GenieACS?');")); ?>
+                    <input type="hidden" name="return_url" value="<?php echo html_escape($ont_return_url); ?>">
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        <i class="bi bi-arrow-repeat me-1"></i>Summon All
+                    </button>
+                <?php echo form_close(); ?>
             <?php endif; ?>
         </div>
     </div>

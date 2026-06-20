@@ -448,6 +448,15 @@ ob_start();
                     </li>
                 </ul>
             </div>
+            <a href="<?php echo site_url('billing/acs-gap'); ?>" class="btn btn-sm btn-outline-info" title="Cek customer WAN IP yang belum terdaftar di ACS">
+                <i class="bi bi-hdd-network me-1"></i>ACS Gap
+            </a>
+            <?php echo form_open('ont/sync', array('class' => 'd-inline', 'onsubmit' => "return confirm('Jalankan summon all ONT dari GenieACS?');")); ?>
+                <input type="hidden" name="return_url" value="<?php echo html_escape($billing_return_url); ?>">
+                <button type="submit" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-arrow-repeat me-1"></i>Summon All
+                </button>
+            <?php echo form_close(); ?>
             <span class="small text-muted ms-auto" id="selected_count">0 selected</span>
         </div>
 
@@ -587,6 +596,13 @@ ob_start();
                                             <?php echo form_open('billing/mark-overdue/' . $invoice_id, array('class' => 'd-inline')); ?>
                                                 <input type="hidden" name="return_url" value="<?php echo html_escape($billing_return_url); ?>">
                                                 <button type="submit" class="btn btn-sm btn-warning" <?php echo $can_mark_overdue ? '' : 'disabled'; ?>>Overdue</button>
+                                            <?php echo form_close(); ?>
+
+                                            <?php echo form_open('billing/delete-ont/' . $invoice_id, array('class' => 'd-inline', 'onsubmit' => "return confirm('Hapus ONT customer ini dari GenieACS?');")); ?>
+                                                <input type="hidden" name="return_url" value="<?php echo html_escape($billing_return_url); ?>">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus ONT ACS">
+                                                    <i class="bi bi-router"></i><span class="d-none d-lg-inline ms-1">ONT</span>
+                                                </button>
                                             <?php echo form_close(); ?>
 
                                             <?php echo form_open('billing/delete/' . $invoice_id, array('class' => 'd-inline', 'onsubmit' => "return confirm('Yakin hapus invoice ini?');")); ?>

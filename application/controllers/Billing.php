@@ -11,6 +11,7 @@ class Billing extends MY_Controller
         $this->load->helper(array('url', 'form', 'notification'));
         $this->load->library(array('billing_automation_service', 'form_validation'));
         $this->load->model('billing_automation_model');
+        $this->load->model('ont_device_model');
     }
 
     public function index()
@@ -914,6 +915,71 @@ class Billing extends MY_Controller
         redirect($this->billing_return_url());
     }
 
+    public function delete_ont($id)
+    {
+        if (strtoupper((string) $this->input->method()) !== 'POST') {
+            show_error('Method Not Allowed', 405);
+            return;
+        }
+
+        $invoice = $this->get_invoice_detail((int) $id);
+        if (empty($invoice)) {
+            $this->session->set_flashdata('error', 'Invoice tidak ditemukan.');
+            redirect($this->billing_return_url());
+            return;
+        }
+
+        $target = $this->resolve_invoice_ont_delete_target($invoice);
+        if (empty($target['success'])) {
+            $this->session->set_flashdata('error', (string) ($target['message'] ?? 'Target ONT tidak ditemukan.'));
+            redirect($this->billing_return_url());
+            return;
+        }
+
+        try {
+            $router_id = (int) $target['router_id'];
+            $genieacs = $this->load_genieacs_client($router_id);
+            $device_id = trim((string) ($target['device_id'] ?? ''));
+            $serial = trim((string) ($target['serial_number'] ?? ''));
+            $result = $device_id !== ''
+                ? $genieacs->deleteDeviceById($device_id)
+                : $genieacs->deleteDevice($serial);
+
+            if (empty($result['success'])) {
+                $this->session->set_flashdata('error', 'Hapus ONT GenieACS gagal: ' . (string) ($result['message'] ?? 'unknown'));
+                redirect($this->billing_return_url());
+                return;
+            }
+
+            $label = $device_id !== '' ? $device_id : $serial;
+            $customer_name = trim((string) ($invoice['customer_name'] ?? ''));
+            $suffix = $customer_name !== '' ? (' pelanggan ' . $customer_name) : '';
+            $this->session->set_flashdata(
+                'success',
+                'ONT ' . $label . $suffix . ' berhasil diproses hapus dari GenieACS. Source: ' . (string) ($target['source'] ?? '-')
+            );
+        } catch (Throwable $e) {
+            log_message('error', '[BILLING][DELETE_ONT] ' . $e->getMessage());
+            $this->session->set_flashdata('error', 'Hapus ONT GenieACS gagal: ' . $e->getMessage());
+        }
+
+        redirect($this->billing_return_url());
+    }
+
+    public function acs_gap()
+    {
+        $search = trim((string) $this->input->get('search', true));
+        $report = $this->build_acs_gap_report($search);
+
+        return $this->load->view('billing/acs_gap', array(
+            'search' => $search,
+            'summary' => (array) ($report['summary'] ?? array()),
+            'missing_rows' => (array) ($report['missing_rows'] ?? array()),
+            'error_message' => (string) ($report['error_message'] ?? ''),
+            'scope_router_id' => $this->getEffectiveRouterId(),
+        ));
+    }
+
     public function bulk_action()
     {
         if (strtoupper((string) $this->input->method()) !== 'POST') {
@@ -1052,6 +1118,276 @@ class Billing extends MY_Controller
         }
 
         return in_array((string) $column, $this->db->list_fields($table), true);
+    }
+
+    private function resolve_invoice_ont_delete_target(array $invoice)
+    {
+        $router_id = $this->resolve_invoice_router_id($invoice);
+        if ($router_id <= 0) {
+            return array('success' => false, 'message' => 'Router ONT tidak ditemukan.');
+        }
+        if (!$this->can_access_billing_router($router_id)) {
+            return array('success' => false, 'message' => 'Akses router ONT ditolak.');
+        }
+
+        $customer_id = (int) ($invoice['customer_id'] ?? 0);
+        $device_id = trim((string) ($invoice['customer_ont_device_id'] ?? ''));
+        $serial = trim((string) ($invoice['customer_ont_serial'] ?? ''));
+        $source = '';
+
+        if ($device_id !== '') {
+            $source = 'customers.ont_device_id';
+        } elseif ($serial !== '') {
+            $source = 'customers.ont_serial';
+        }
+
+        $wan_ip = trim((string) ($invoice['customer_ip_address'] ?? ''));
+        if (!$this->is_usable_wan_ip($wan_ip)) {
+            $wan_ip = trim((string) ($invoice['remote_ip'] ?? ''));
+        }
+
+        if ($device_id === '' && $serial === '' && $this->is_usable_wan_ip($wan_ip) && $this->ont_device_model->table_exists()) {
+            $local_ont = (array) $this->ont_device_model->find_by_wan_ip($wan_ip, $router_id);
+            if (!empty($local_ont['serial_number'])) {
+                $serial = trim((string) $local_ont['serial_number']);
+                $source = 'ont_devices.wan_ip';
+            }
+        }
+
+        if ($device_id === '' && $serial === '' && $customer_id > 0) {
+            $local_ont = $this->find_local_ont_by_customer_id($customer_id, $router_id);
+            if (!empty($local_ont['serial_number'])) {
+                $serial = trim((string) $local_ont['serial_number']);
+                $source = 'ont_devices.customer_id';
+            }
+        }
+
+        if ($device_id === '' && $serial === '') {
+            return array(
+                'success' => false,
+                'message' => 'Customer belum punya ONT di ACS/local mirror. Isi ont_device_id/ont_serial atau sync ONT dulu.',
+            );
+        }
+
+        return array(
+            'success' => true,
+            'router_id' => $router_id,
+            'customer_id' => $customer_id,
+            'device_id' => $device_id,
+            'serial_number' => $serial,
+            'wan_ip' => $wan_ip,
+            'source' => $source,
+        );
+    }
+
+    private function find_local_ont_by_customer_id($customer_id, $router_id)
+    {
+        $customer_id = (int) $customer_id;
+        $router_id = (int) $router_id;
+        if ($customer_id <= 0 || !$this->db->table_exists('ont_devices')) {
+            return array();
+        }
+
+        $qb = $this->db
+            ->from('ont_devices')
+            ->where('customer_id', $customer_id)
+            ->order_by('last_inform', 'DESC')
+            ->order_by('id', 'DESC')
+            ->limit(1);
+
+        if ($router_id > 0 && $this->table_has_column('ont_devices', 'router_id')) {
+            $qb->where('router_id', $router_id);
+        }
+
+        $row = $qb->get()->row_array();
+        return is_array($row) ? $row : array();
+    }
+
+    private function build_acs_gap_report($search = '')
+    {
+        $summary = array(
+            'customer_with_ip' => 0,
+            'registered_in_acs' => 0,
+            'missing_in_acs' => 0,
+            'total_acs_ont' => $this->count_scoped_ont_devices(),
+        );
+        $missing_rows = array();
+
+        if (!$this->db->table_exists('customers')) {
+            return array(
+                'summary' => $summary,
+                'missing_rows' => array(),
+                'error_message' => 'Tabel customers tidak ditemukan.',
+            );
+        }
+        if (!$this->ont_device_model->table_exists()) {
+            return array(
+                'summary' => $summary,
+                'missing_rows' => array(),
+                'error_message' => 'Tabel ont_devices belum tersedia. Jalankan migration/sync GenieACS terlebih dahulu.',
+            );
+        }
+
+        $customers = $this->get_customer_wan_ip_rows($search);
+        foreach ($customers as $customer) {
+            $wan_ip = trim((string) ($customer['ip_address'] ?? ''));
+            if (!$this->is_usable_wan_ip($wan_ip)) {
+                continue;
+            }
+
+            $summary['customer_with_ip']++;
+            $router_id = (int) ($customer['router_id'] ?? 0);
+            $matched_ont = (array) $this->ont_device_model->find_by_wan_ip($wan_ip, $router_id > 0 ? $router_id : null);
+            if (!empty($matched_ont['id'])) {
+                $summary['registered_in_acs']++;
+                continue;
+            }
+
+            $summary['missing_in_acs']++;
+            $customer['pppoe_label'] = trim((string) ($customer['pppoe_username'] ?? ''));
+            if ($customer['pppoe_label'] === '') {
+                $customer['pppoe_label'] = trim((string) ($customer['username'] ?? ''));
+            }
+            $missing_rows[] = $customer;
+        }
+
+        return array(
+            'summary' => $summary,
+            'missing_rows' => $missing_rows,
+            'error_message' => '',
+        );
+    }
+
+    private function get_customer_wan_ip_rows($search = '')
+    {
+        if (!$this->db->table_exists('customers')) {
+            return array();
+        }
+
+        $fields = $this->db->list_fields('customers');
+        if (!in_array('ip_address', $fields, true)) {
+            return array();
+        }
+
+        $has_router_id = in_array('router_id', $fields, true);
+        $select = array('c.id', 'c.ip_address');
+        $select[] = in_array('customer_code', $fields, true) ? 'c.customer_code' : "'' AS customer_code";
+        $select[] = in_array('full_name', $fields, true)
+            ? 'c.full_name'
+            : (in_array('nama', $fields, true) ? 'c.nama AS full_name' : "'' AS full_name");
+        $select[] = $has_router_id ? 'c.router_id' : '0 AS router_id';
+        $select[] = in_array('status', $fields, true) ? 'c.status AS customer_status' : "'' AS customer_status";
+        $select[] = in_array('connection_type', $fields, true) ? 'c.connection_type' : "'' AS connection_type";
+        $select[] = in_array('pppoe_username', $fields, true) ? 'c.pppoe_username' : "'' AS pppoe_username";
+        $select[] = in_array('username', $fields, true) ? 'c.username' : "'' AS username";
+        $select[] = in_array('ont_device_id', $fields, true) ? 'c.ont_device_id' : "'' AS ont_device_id";
+        $select[] = in_array('ont_serial', $fields, true) ? 'c.ont_serial' : "'' AS ont_serial";
+
+        if ($has_router_id && $this->db->table_exists('routers')) {
+            $select[] = 'r.name AS router_name';
+        } else {
+            $select[] = "'' AS router_name";
+        }
+
+        $qb = $this->db
+            ->select(implode(', ', $select), false)
+            ->from('customers c')
+            ->where('c.ip_address IS NOT NULL', null, false)
+            ->where('c.ip_address <>', '');
+
+        if ($has_router_id && $this->db->table_exists('routers')) {
+            $qb->join('routers r', 'r.id = c.router_id', 'left');
+        }
+
+        if (in_array('status', $fields, true)) {
+            $qb->where_in('c.status', array('active', 'suspended'));
+        }
+        if ($has_router_id) {
+            $this->applyRouterFilter('c', $qb);
+        }
+
+        $search = trim((string) $search);
+        if ($search !== '') {
+            $qb->group_start()
+                ->like('c.ip_address', $search);
+            foreach (array('customer_code', 'full_name', 'nama', 'pppoe_username', 'username') as $col) {
+                if (in_array($col, $fields, true)) {
+                    $qb->or_like('c.' . $col, $search);
+                }
+            }
+            $qb->group_end();
+        }
+
+        if ($has_router_id) {
+            $qb->order_by('c.router_id', 'ASC');
+        }
+        $qb->order_by(in_array('full_name', $fields, true) ? 'c.full_name' : 'c.id', 'ASC');
+
+        return $qb->get()->result_array();
+    }
+
+    private function count_scoped_ont_devices()
+    {
+        if (!$this->db->table_exists('ont_devices')) {
+            return 0;
+        }
+
+        $qb = $this->db->from('ont_devices d');
+        if ($this->table_has_column('ont_devices', 'router_id')) {
+            $this->applyRouterFilter('d', $qb);
+        }
+
+        return (int) $qb->count_all_results();
+    }
+
+    private function is_usable_wan_ip($ip)
+    {
+        $ip = trim((string) $ip);
+        if ($ip === '' || !filter_var($ip, FILTER_VALIDATE_IP)) {
+            return false;
+        }
+
+        return !in_array($ip, array('0.0.0.0', '::', '::0'), true);
+    }
+
+    private function resolve_invoice_router_id(array $invoice)
+    {
+        $router_id = (int) ($invoice['router_id'] ?? 0);
+        if ($router_id <= 0) {
+            $router_id = (int) ($invoice['customer_router_id'] ?? 0);
+        }
+        if ($router_id <= 0) {
+            $effective = $this->getEffectiveRouterId();
+            $router_id = $effective !== null ? (int) $effective : 0;
+        }
+
+        return $router_id;
+    }
+
+    private function can_access_billing_router($router_id)
+    {
+        $router_id = (int) $router_id;
+        if ($router_id <= 0) {
+            return false;
+        }
+        if ($this->is_superadmin()) {
+            return true;
+        }
+
+        $effective = $this->getEffectiveRouterId();
+        return $effective !== null && (int) $effective === $router_id;
+    }
+
+    private function load_genieacs_client($router_id)
+    {
+        $router_id = (int) $router_id;
+        if ($router_id <= 0) {
+            throw new RuntimeException('Router ID tidak valid untuk GenieACS.');
+        }
+
+        $alias = 'genieacs_billing_client_' . $router_id;
+        $this->load->library('genieacs', array('router_id' => $router_id), $alias);
+        return $this->{$alias};
     }
 
     private function resolve_remote_ip_from_local($username)
@@ -1285,6 +1621,9 @@ class Billing extends MY_Controller
         $customer_has_pppoe_username = $this->db->table_exists('customers') && in_array('pppoe_username', $this->db->list_fields('customers'), true);
         $customer_has_username = $this->db->table_exists('customers') && in_array('username', $this->db->list_fields('customers'), true);
         $customer_has_ip = $this->db->table_exists('customers') && in_array('ip_address', $this->db->list_fields('customers'), true);
+        $customer_has_ont_device_id = $this->db->table_exists('customers') && in_array('ont_device_id', $this->db->list_fields('customers'), true);
+        $customer_has_ont_serial = $this->db->table_exists('customers') && in_array('ont_serial', $this->db->list_fields('customers'), true);
+        $customer_has_router_id = $this->db->table_exists('customers') && in_array('router_id', $this->db->list_fields('customers'), true);
 
         $select = array(
             'i.*',
@@ -1297,6 +1636,9 @@ class Billing extends MY_Controller
         $select[] = $customer_has_pppoe_username ? 'c.pppoe_username as customer_pppoe_username' : "'' as customer_pppoe_username";
         $select[] = $customer_has_username ? 'c.username as customer_username' : "'' as customer_username";
         $select[] = $customer_has_ip ? 'c.ip_address as customer_ip_address' : "'' as customer_ip_address";
+        $select[] = $customer_has_ont_device_id ? 'c.ont_device_id as customer_ont_device_id' : "'' as customer_ont_device_id";
+        $select[] = $customer_has_ont_serial ? 'c.ont_serial as customer_ont_serial' : "'' as customer_ont_serial";
+        $select[] = $customer_has_router_id ? 'c.router_id as customer_router_id' : "0 as customer_router_id";
 
         $this->db
             ->select(implode(', ', $select), false)

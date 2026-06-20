@@ -216,7 +216,7 @@ class Ont extends MY_Controller
                 return;
             }
             $this->session->set_flashdata('error', $msg);
-            redirect('ont');
+            redirect($this->sync_return_url());
             return;
         }
 
@@ -233,7 +233,7 @@ class Ont extends MY_Controller
                 return;
             }
             $this->session->set_flashdata('error', $msg);
-            redirect('ont');
+            redirect($this->sync_return_url());
             return;
         }
 
@@ -316,7 +316,27 @@ class Ont extends MY_Controller
         } else {
             $this->session->set_flashdata('success', $message);
         }
-        redirect('ont');
+        redirect($this->sync_return_url());
+    }
+
+    private function sync_return_url($fallback = 'ont')
+    {
+        $raw = trim((string) $this->input->post('return_url', true));
+        if ($raw === '') {
+            $raw = trim((string) $this->input->get('return_url', true));
+        }
+
+        $raw = str_replace(array("\r", "\n"), '', $raw);
+        if ($raw === '' || preg_match('/^(https?:)?\/\//i', $raw)) {
+            return $fallback;
+        }
+
+        $raw = ltrim($raw, '/');
+        if (strpos($raw, 'billing') === 0 || strpos($raw, 'ont') === 0) {
+            return $raw;
+        }
+
+        return $fallback;
     }
 
     private function sync_devices_for_router($router_id, $genieacs)
@@ -746,11 +766,28 @@ class Ont extends MY_Controller
             return (bool) $this->connection_request_reachability[$url];
         }
 
+        $probe = $this->probe_connection_request_url($url, 'HEAD');
+        $reachable = !empty($probe['reachable']);
+        if (!$reachable && in_array((int) ($probe['code'] ?? 0), array(405, 501), true)) {
+            $probe = $this->probe_connection_request_url($url, 'GET');
+            $reachable = !empty($probe['reachable']);
+        }
+
+        $this->connection_request_reachability[$url] = $reachable;
+        return $reachable;
+    }
+
+    private function probe_connection_request_url($url, $method = 'HEAD')
+    {
+        $method = strtoupper(trim((string) $method));
+        $isHead = $method === 'HEAD';
+
         $ch = curl_init($url);
         curl_setopt_array($ch, array(
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HEADER => false,
-            CURLOPT_NOBODY => false,
+            CURLOPT_NOBODY => $isHead,
+            CURLOPT_CUSTOMREQUEST => $isHead ? 'HEAD' : 'GET',
             CURLOPT_FOLLOWLOCATION => false,
             CURLOPT_CONNECTTIMEOUT_MS => 800,
             CURLOPT_TIMEOUT_MS => 1500,
@@ -762,9 +799,11 @@ class Ont extends MY_Controller
         $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        $reachable = $errno === 0 && $httpCode > 0 && $httpCode < 500;
-        $this->connection_request_reachability[$url] = $reachable;
-        return $reachable;
+        return array(
+            'reachable' => $errno === 0 && $httpCode > 0 && $httpCode < 500,
+            'code' => $httpCode,
+            'errno' => $errno,
+        );
     }
 
     private function try_refresh_virtual_parameters($genieacs, $device_id)

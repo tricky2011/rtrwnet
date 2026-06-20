@@ -159,6 +159,32 @@ class Ont_device_model extends CI_Model
         return $this->db->limit(1)->get()->row_array();
     }
 
+    public function find_by_wan_ip($wan_ip, $router_id = null)
+    {
+        $wan_ip = trim((string) $wan_ip);
+        if ($wan_ip === '') {
+            return null;
+        }
+
+        $router_id = $router_id !== null ? (int) $router_id : null;
+        $this->db->select('d.*, ' . $this->customer_name_expression('c') . ' AS customer_name, r.name AS router_name', false)
+            ->from($this->table . ' d')
+            ->join('customers c', 'c.id = d.customer_id', 'left')
+            ->join('routers r', 'r.id = d.router_id', 'left')
+            ->where('d.wan_ip', $wan_ip);
+
+        if ($this->has_router_id() && $router_id !== null && $router_id > 0) {
+            $this->db->where('d.router_id', $router_id);
+        }
+
+        return $this->db
+            ->order_by('d.last_inform', 'DESC')
+            ->order_by('d.id', 'DESC')
+            ->limit(1)
+            ->get()
+            ->row_array();
+    }
+
     public function get_counts($router_id = null)
     {
         $router_id = $router_id !== null ? (int) $router_id : null;

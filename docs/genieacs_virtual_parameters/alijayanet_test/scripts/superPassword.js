@@ -1,6 +1,6 @@
 // virtual parameter superadmin password
-let m = "";
-if (args[1].value) {
+let m = "admin";
+if (args[1].value && String(args[1].value[0] || '').trim() !== '') {
   m = args[1].value[0];
   declare("InternetGatewayDevice.X_CU_Function.Web.AdminPassword", null, {value: m});
   declare("InternetGatewayDevice.UserInterface.X_ZTE-COM_WebUserInfo.AdminPassword", null, {value: m});

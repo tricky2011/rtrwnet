@@ -139,6 +139,65 @@ class Genieacs
         return array('success' => true, 'message' => 'OK', 'data' => $rows[0]);
     }
 
+    public function deleteDevice($identifier)
+    {
+        $identifier = trim((string) $identifier);
+        if ($identifier === '') {
+            return array('success' => false, 'message' => 'Device ID/serial kosong.');
+        }
+
+        $deviceId = '';
+        $byId = $this->getDeviceById($identifier, array('_id'));
+        if (!empty($byId['success']) && !empty($byId['data']['_id'])) {
+            $deviceId = (string) $byId['data']['_id'];
+        }
+
+        if ($deviceId === '') {
+            $bySerial = $this->getDevice($identifier);
+            if (!empty($bySerial['success']) && !empty($bySerial['data']['_id'])) {
+                $deviceId = (string) $bySerial['data']['_id'];
+            }
+        }
+
+        if ($deviceId === '') {
+            return array('success' => false, 'message' => 'Device tidak ditemukan di GenieACS.');
+        }
+
+        return $this->deleteDeviceById($deviceId);
+    }
+
+    public function deleteDeviceById($deviceId)
+    {
+        $deviceId = trim((string) $deviceId);
+        if ($deviceId === '') {
+            return array('success' => false, 'message' => 'Device ID kosong.');
+        }
+
+        $resp = $this->request('DELETE', '/devices/' . rawurlencode($deviceId));
+        if (!empty($resp['success'])) {
+            return array(
+                'success' => true,
+                'message' => 'Device ' . $deviceId . ' berhasil dihapus dari GenieACS.',
+                'device_id' => $deviceId,
+            );
+        }
+
+        if ((int) ($resp['code'] ?? 0) === 404) {
+            return array(
+                'success' => true,
+                'message' => 'Device ' . $deviceId . ' sudah tidak ada di GenieACS.',
+                'device_id' => $deviceId,
+            );
+        }
+
+        return array(
+            'success' => false,
+            'message' => (string) ($resp['message'] ?? 'Hapus device GenieACS gagal.'),
+            'device_id' => $deviceId,
+            'code' => (int) ($resp['code'] ?? 0),
+        );
+    }
+
     public function rebootDevice($serial)
     {
         $device = $this->getDevice($serial);

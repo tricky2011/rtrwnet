@@ -70,6 +70,13 @@ $customer_phone = (string) ($invoice['customer_phone'] ?? '-');
 $customer_address = (string) ($invoice['customer_address'] ?? '-');
 $profile_name = (string) ($invoice['profile_name'] ?? '-');
 $remote_ip = (string) ($invoice['remote_ip'] ?? '-');
+$customer_ont_device_id = trim((string) ($invoice['customer_ont_device_id'] ?? ''));
+$customer_ont_serial = trim((string) ($invoice['customer_ont_serial'] ?? ''));
+$customer_ip_address = trim((string) ($invoice['customer_ip_address'] ?? ''));
+$can_delete_ont = $customer_ont_device_id !== ''
+    || $customer_ont_serial !== ''
+    || filter_var($customer_ip_address, FILTER_VALIDATE_IP)
+    || filter_var($remote_ip, FILTER_VALIDATE_IP);
 
 $period_start = (string) ($invoice['billing_period_start'] ?? '');
 $period_end = (string) ($invoice['billing_period_end'] ?? '');
@@ -145,6 +152,13 @@ ob_start();
         <button type="button" class="btn btn-outline-dark btn-sm" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
         <button type="button" class="btn btn-success btn-sm" id="btnOpenWaModal"><i class="bi bi-whatsapp"></i> Kirim WhatsApp</button>
         <a href="<?php echo site_url('billing/edit/' . $invoice_id) . '?return_url=' . rawurlencode($return_url); ?>" class="btn btn-outline-primary btn-sm"><i class="bi bi-pencil-square"></i> Edit Invoice</a>
+
+        <?php if ($can_delete_ont): ?>
+            <?php echo form_open('billing/delete-ont/' . $invoice_id, array('class' => 'd-inline', 'onsubmit' => "return confirm('Hapus ONT customer ini dari GenieACS?');")); ?>
+                <input type="hidden" name="return_url" value="<?php echo html_escape($return_url); ?>">
+                <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-router"></i> Hapus ONT ACS</button>
+            <?php echo form_close(); ?>
+        <?php endif; ?>
 
         <?php if ($can_mark_paid): ?>
             <?php echo form_open('billing/mark-paid/' . $invoice_id, array('class' => 'd-inline')); ?>
