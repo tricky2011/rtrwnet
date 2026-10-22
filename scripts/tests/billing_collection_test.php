@@ -173,6 +173,35 @@ try {
     $db->where('id', 901)->update('telegram_groups', array('is_active' => 0));
     $disabled = $service->run(true, '2026-11-10');
     check(!$disabled['success'] && $disabled['routers'][0]['targets'] === 0, 'No fallback to admin when collection group is disabled');
+    // Bulk collection edits affect only selected customers visible on this router.
+    $ci->load->helper('rbac');
+    $ci->load->model('customer_model');
+    $customers = $ci->customer_model->set_router_scope(901);
+    $before = $db->order_by('id')->get('customers')->result_array();
+    check($customers->bulk_update_payment_collection_method(array(9001, 9002, 9002, 9004, 9005, 9999), 'transfer') === 2,
+        'Bulk transfer deduplicates and skips missing, deleted and other-router customers');
+    $after = $db->order_by('id')->get('customers')->result_array();
+    foreach ($before as $index => $row) {
+        $expected = $row;
+        if (in_array((int) $row['id'], array(9001, 9002), true)) {
+            $expected['payment_collection_method'] = 'transfer';
+            $expected['updated_at'] = $after[$index]['updated_at'];
+        }
+        check($after[$index] === $expected, 'Bulk edit preserves other customer fields and unselected rows: ' . $row['id']);
+    }
+    check($customers->bulk_update_payment_collection_method(array(9001, 9002), 'cash_visit') === 2, 'Bulk switch to cash visits');
+    check($db->where_in('id', array(9001, 9002))->where('payment_collection_method', 'cash_visit')->count_all_results('customers') === 2,
+        'Both selected customers now use cash visits');
+    check($customers->bulk_update_payment_collection_method(array(9001, 9002), 'cash_visit') === 2, 'Repeated bulk choice still succeeds');
+    $snapshot = $db->order_by('id')->get('customers')->result_array();
+    check($customers->bulk_update_payment_collection_method(array(9001), 'cash') === false, 'Reject unsupported collection method');
+    check($customers->bulk_update_payment_collection_method(array(), 'transfer') === 0, 'Empty bulk selection changes nothing');
+    check($customers->bulk_update_payment_collection_method(array(9004, 9005, 9999), 'transfer') === 0, 'Inaccessible bulk selection changes nothing');
+    check($db->order_by('id')->get('customers')->result_array() === $snapshot, 'Rejected bulk requests preserve all rows');
+    $customers->set_router_scope(902);
+    check($customers->bulk_update_payment_collection_method(array(9001, 9004), 'transfer') === 1, 'Switching routers limits bulk edit to newly selected router');
+    check($db->where('id', 9001)->get('customers')->row()->payment_collection_method === 'cash_visit', 'Previous router customer stays unchanged');
+
     echo "PASS: {$checks} checks; only temporary tables and fake messaging used.\n";
 } finally {
     foreach (array_reverse($temporary_tables) as $table) {

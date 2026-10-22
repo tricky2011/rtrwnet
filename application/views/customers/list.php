@@ -119,6 +119,17 @@ ob_start();
                         </li>
                         <li><hr class="dropdown-divider"></li>
                         <li>
+                            <button type="button" class="dropdown-item js-customer-bulk-action" data-action="collection_transfer">
+                                Penagihan: Transfer
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item js-customer-bulk-action" data-action="collection_cash">
+                                Penagihan: Cash — Kunjungan rumah
+                            </button>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
                             <button type="button" class="dropdown-item text-danger js-customer-bulk-action" data-action="delete">
                                 Hapus Selected
                             </button>
@@ -364,14 +375,15 @@ if ($can_manage_bulk) {
             selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
         }
 
-        function buildRequestBody(ids) {
+        function buildRequestBody(ids, fields = {}) {
             const params = new URLSearchParams();
             params.append(csrfName, csrfHash);
             ids.forEach(id => params.append('ids[]', id));
+            Object.entries(fields).forEach(([name, value]) => params.append(name, value));
             return params.toString();
         }
 
-        async function postBulk(url, ids) {
+        async function postBulk(url, ids, fields = {}) {
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
@@ -379,7 +391,7 @@ if ($can_manage_bulk) {
                     'X-Requested-With': 'XMLHttpRequest'
                 },
                 credentials: 'same-origin',
-                body: buildRequestBody(ids)
+                body: buildRequestBody(ids, fields)
             });
 
             if (response.status === 403) {
@@ -414,7 +426,7 @@ if ($can_manage_bulk) {
 
             const confirm = await Swal.fire({
                 title: options.confirmTitle,
-                text: options.confirmText,
+                text: ids.length + ' customer dipilih. ' + options.confirmText,
                 icon: options.confirmIcon || 'question',
                 showCancelButton: true,
                 confirmButtonText: options.confirmButtonText || 'Lanjut',
@@ -426,7 +438,7 @@ if ($can_manage_bulk) {
             }
 
             try {
-                const result = await postBulk(options.url, ids);
+                const result = await postBulk(options.url, ids, options.fields);
                 await Swal.fire({
                     icon: result.status === 'error' ? 'error' : (result.status === 'partial' ? 'warning' : 'success'),
                     title: result.status === 'error' ? 'Gagal' : 'Selesai',
@@ -470,6 +482,20 @@ if ($can_manage_bulk) {
                 confirmText: 'Status customer akan di-suspend dan PPP Secret di MikroTik di-disable.',
                 confirmIcon: 'warning',
                 confirmButtonText: 'Ya, disable'
+            },
+            'collection_transfer': {
+                url: <?php echo json_encode(site_url('customers/bulk_update_collection_method')); ?>,
+                fields: { payment_collection_method: 'transfer' },
+                confirmTitle: 'Ubah penagihan menjadi Transfer?',
+                confirmText: 'Cara penagihan customer terpilih akan diubah menjadi Transfer.',
+                confirmButtonText: 'Ya, ubah penagihan'
+            },
+            'collection_cash': {
+                url: <?php echo json_encode(site_url('customers/bulk_update_collection_method')); ?>,
+                fields: { payment_collection_method: 'cash_visit' },
+                confirmTitle: 'Ubah penagihan menjadi Cash?',
+                confirmText: 'Cara penagihan customer terpilih akan diubah menjadi Cash — Kunjungan rumah.',
+                confirmButtonText: 'Ya, ubah penagihan'
             },
             'invoice': {
                 url: <?php echo json_encode(site_url('customers/bulk_generate_invoice')); ?>,

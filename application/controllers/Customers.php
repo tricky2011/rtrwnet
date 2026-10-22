@@ -688,6 +688,50 @@ class Customers extends MY_Controller
         return redirect('customers');
     }
 
+    public function bulk_update_collection_method()
+    {
+        $this->require_role(array('superadmin', 'admin'), 'Akses ditolak. Hanya admin yang dapat mengubah cara penagihan.');
+
+        if (strtoupper((string) $this->input->method()) !== 'POST') {
+            return $this->json_response(405, $this->bulk_response('error', 'Method Not Allowed'));
+        }
+
+        $method = $this->input->post('payment_collection_method', true);
+        if (!in_array($method, array('transfer', 'cash_visit'), true)) {
+            return $this->json_response(422, $this->bulk_response('error', 'Pilih cara penagihan Transfer atau Cash.'));
+        }
+
+        $ids = $this->parse_bulk_customer_ids();
+        if (empty($ids)) {
+            return $this->json_response(422, $this->bulk_response('error', 'Pilih minimal 1 customer.'));
+        }
+
+        if (!$this->has_field('payment_collection_method')) {
+            return $this->json_response(500, $this->bulk_response('error', 'Kolom cara penagihan belum tersedia. Jalankan migrasi database terlebih dahulu.'));
+        }
+
+        $processed = $this->customer_model->bulk_update_payment_collection_method($ids, $method);
+        if ($processed === false) {
+            log_message('error', '[CUSTOMERS_BULK_COLLECTION_METHOD] DB error: ' . json_encode($this->db->error()));
+            return $this->json_response(500, $this->bulk_response('error', 'Gagal mengubah cara penagihan customer. Silakan coba lagi.'));
+        }
+        if ($processed === 0) {
+            return $this->json_response(422, $this->bulk_response('error', 'Customer terpilih tidak ditemukan atau di luar akses router Anda.'));
+        }
+
+        $failed = count($ids) - $processed;
+        $label = $method === 'transfer' ? 'Transfer' : 'Cash — Kunjungan rumah';
+        $message = 'Cara penagihan ' . $processed . ' customer berhasil diubah menjadi ' . $label . '.';
+        if ($failed > 0) {
+            $message .= ' ' . $failed . ' customer dilewati karena tidak ditemukan atau di luar akses Anda.';
+        }
+        return $this->json_response(200, $this->bulk_response($failed > 0 ? 'partial' : 'success', $message, array(
+            'processed' => $processed,
+            'success_count' => $processed,
+            'failed_count' => $failed,
+        )));
+    }
+
     public function bulk_delete()
     {
         $this->require_role(array('superadmin', 'admin'), 'Akses ditolak. Teknisi tidak diperbolehkan menghapus data.');

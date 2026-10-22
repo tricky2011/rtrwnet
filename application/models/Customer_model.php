@@ -150,6 +150,46 @@ class Customer_model extends CI_Model
         return $qb->update($this->table, $payload);
     }
 
+    public function bulk_update_payment_collection_method(array $ids, $method)
+    {
+        if (!$this->has_field('payment_collection_method')
+            || !in_array($method, array('transfer', 'cash_visit'), true)) {
+            return false;
+        }
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static function ($id) {
+            return $id > 0;
+        })));
+        if (empty($ids)) {
+            return 0;
+        }
+
+        // Use the same tenant, router and deletion rules as the customer list.
+        $query = $this->build_list_query('', true)
+            ->select('c.id')
+            ->distinct()
+            ->where_in('c.id', $ids)
+            ->get();
+        if (!$query) {
+            return false;
+        }
+        $accessible_ids = array_map('intval', array_column($query->result_array(), 'id'));
+        if (empty($accessible_ids)) {
+            return 0;
+        }
+
+        $payload = array('payment_collection_method' => $method);
+        if ($this->has_field('updated_at')) {
+            $payload['updated_at'] = date('Y-m-d H:i:s');
+        }
+        $qb = $this->db->where_in('id', $accessible_ids);
+        $this->apply_tenant_scope($qb);
+        $this->apply_soft_delete_scope($qb);
+
+        // Count eligible customers, including those already using this method.
+        return $qb->update($this->table, $payload) ? count($accessible_ids) : false;
+    }
+
     public function soft_delete($id)
     {
         if (!$this->db->table_exists($this->table)) {

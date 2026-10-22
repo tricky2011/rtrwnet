@@ -1,0 +1,3924 @@
+{
+  "basis": "Static source inventory; not runtime verification or complete API contract",
+  "source_revision": "aadebf9b4cc34b13969989a765b542d3a278759c",
+  "php_file_counts": {
+    "controllers": 51,
+    "models": 27,
+    "libraries": 28,
+    "helpers": 9,
+    "jobs": 5,
+    "migrations": 18,
+    "views": 90
+  },
+  "routes": [
+    {
+      "uri": "default_controller",
+      "target": "dashboard",
+      "line": 52
+    },
+    {
+      "uri": "404_override",
+      "target": "",
+      "line": 53
+    },
+    {
+      "uri": "auth",
+      "target": "auth/login",
+      "line": 57
+    },
+    {
+      "uri": "auth/login",
+      "target": "auth/login",
+      "line": 58
+    },
+    {
+      "uri": "auth/process_login",
+      "target": "auth/process_login",
+      "line": 59
+    },
+    {
+      "uri": "auth/logout",
+      "target": "auth/logout",
+      "line": 60
+    },
+    {
+      "uri": "notification/latest",
+      "target": "notification/latest",
+      "line": 63
+    },
+    {
+      "uri": "notification/unread_count",
+      "target": "notification/unread_count",
+      "line": 64
+    },
+    {
+      "uri": "notification/mark_read/(:num)",
+      "target": "notification/mark_read/$1",
+      "line": 65
+    },
+    {
+      "uri": "notification/mark_all_read",
+      "target": "notification/mark_all_read",
+      "line": 66
+    },
+    {
+      "uri": "notification/auth",
+      "target": "notification/auth",
+      "line": 67
+    },
+    {
+      "uri": "cron-notification/run-all",
+      "target": "cronnotification/run_all",
+      "line": 70
+    },
+    {
+      "uri": "cron-notification/check-overdue-invoice",
+      "target": "cronnotification/check_overdue_invoice",
+      "line": 71
+    },
+    {
+      "uri": "cron-notification/check-router-status",
+      "target": "cronnotification/check_router_status",
+      "line": 72
+    },
+    {
+      "uri": "cron-notification/check-ticket-pending",
+      "target": "cronnotification/check_ticket_pending",
+      "line": 73
+    },
+    {
+      "uri": "cron-notification/check-inventory-minimum",
+      "target": "cronnotification/check_inventory_minimum",
+      "line": 74
+    },
+    {
+      "uri": "api/ont/set-wifi",
+      "target": "api/ont/set_wifi",
+      "line": 77
+    },
+    {
+      "uri": "api/ont/set_wifi",
+      "target": "api/ont/set_wifi",
+      "line": 78
+    },
+    {
+      "uri": "api/ont/reboot",
+      "target": "api/ont/reboot",
+      "line": 79
+    },
+    {
+      "uri": "api/ont/connected-devices",
+      "target": "api/ont/connected_devices",
+      "line": 80
+    },
+    {
+      "uri": "api/ont/connected_devices",
+      "target": "api/ont/connected_devices",
+      "line": 81
+    },
+    {
+      "uri": "dashboard",
+      "target": "dashboard/index",
+      "line": 84
+    },
+    {
+      "uri": "dashboard/index",
+      "target": "dashboard/index",
+      "line": 85
+    },
+    {
+      "uri": "dashboard/switch-router",
+      "target": "dashboard/switch_router",
+      "line": 86
+    },
+    {
+      "uri": "dashboard/switch_router",
+      "target": "dashboard/switch_router",
+      "line": 87
+    },
+    {
+      "uri": "dashboard/switch-router/(:any)",
+      "target": "dashboard/switch_router/$1",
+      "line": 88
+    },
+    {
+      "uri": "dashboard/switch_router/(:any)",
+      "target": "dashboard/switch_router/$1",
+      "line": 89
+    },
+    {
+      "uri": "system-monitoring",
+      "target": "monitoring/index",
+      "line": 90
+    },
+    {
+      "uri": "system_monitoring",
+      "target": "monitoring/index",
+      "line": 91
+    },
+    {
+      "uri": "monitoring",
+      "target": "monitoring/index",
+      "line": 92
+    },
+    {
+      "uri": "monitoring/index",
+      "target": "monitoring/index",
+      "line": 93
+    },
+    {
+      "uri": "monitoring/snapshot_json",
+      "target": "monitoring/snapshot_json",
+      "line": 94
+    },
+    {
+      "uri": "monitoring/snapshot-json",
+      "target": "monitoring/snapshot_json",
+      "line": 95
+    },
+    {
+      "uri": "monitoring/check_now",
+      "target": "monitoring/check_now",
+      "line": 96
+    },
+    {
+      "uri": "monitoring/check-now",
+      "target": "monitoring/check_now",
+      "line": 97
+    },
+    {
+      "uri": "monitoring/save-interface-config",
+      "target": "monitoring/save_interface_config",
+      "line": 98
+    },
+    {
+      "uri": "monitoring/save_interface_config",
+      "target": "monitoring/save_interface_config",
+      "line": 99
+    },
+    {
+      "uri": "customer",
+      "target": "customers/index",
+      "line": 100
+    },
+    {
+      "uri": "customers",
+      "target": "customers/index",
+      "line": 102
+    },
+    {
+      "uri": "customers/list",
+      "target": "customers/index",
+      "line": 103
+    },
+    {
+      "uri": "customers/generate_credential",
+      "target": "customers/generate_credential",
+      "line": 104
+    },
+    {
+      "uri": "customers/preview-remote-ip",
+      "target": "customers/preview_remote_ip",
+      "line": 105
+    },
+    {
+      "uri": "customers/preview_remote_ip",
+      "target": "customers/preview_remote_ip",
+      "line": 106
+    },
+    {
+      "uri": "customers/suggest-remote-ip",
+      "target": "customers/suggest_remote_ip",
+      "line": 107
+    },
+    {
+      "uri": "customers/suggest_remote_ip",
+      "target": "customers/suggest_remote_ip",
+      "line": 108
+    },
+    {
+      "uri": "customers/bulk_delete",
+      "target": "customers/bulk_delete",
+      "line": 109
+    },
+    {
+      "uri": "customers/bulk-disable",
+      "target": "customers/bulk_disable",
+      "line": 110
+    },
+    {
+      "uri": "customers/bulk_disable",
+      "target": "customers/bulk_disable",
+      "line": 111
+    },
+    {
+      "uri": "customers/bulk-generate-invoice",
+      "target": "customers/bulk_generate_invoice",
+      "line": 112
+    },
+    {
+      "uri": "customers/bulk_generate_invoice",
+      "target": "customers/bulk_generate_invoice",
+      "line": 113
+    },
+    {
+      "uri": "customers/bulk-update-collection-method",
+      "target": "customers/bulk_update_collection_method",
+      "line": 114
+    },
+    {
+      "uri": "customers/bulk_update_collection_method",
+      "target": "customers/bulk_update_collection_method",
+      "line": 115
+    },
+    {
+      "uri": "customers/upgrade",
+      "target": "CustomerUpgrade/index",
+      "line": 116
+    },
+    {
+      "uri": "customers/upgrade/index",
+      "target": "CustomerUpgrade/index",
+      "line": 117
+    },
+    {
+      "uri": "customers/upgrade/show-form/(:num)",
+      "target": "CustomerUpgrade/show_form/$1",
+      "line": 118
+    },
+    {
+      "uri": "customers/upgrade/show_form/(:num)",
+      "target": "CustomerUpgrade/show_form/$1",
+      "line": 119
+    },
+    {
+      "uri": "customers/upgrade/calculate-prorate",
+      "target": "CustomerUpgrade/calculate_prorate",
+      "line": 120
+    },
+    {
+      "uri": "customers/upgrade/calculate_prorate",
+      "target": "CustomerUpgrade/calculate_prorate",
+      "line": 121
+    },
+    {
+      "uri": "customers/upgrade/process",
+      "target": "CustomerUpgrade/process_upgrade",
+      "line": 122
+    },
+    {
+      "uri": "customers/upgrade/process_upgrade",
+      "target": "CustomerUpgrade/process_upgrade",
+      "line": 123
+    },
+    {
+      "uri": "ppp-profiles",
+      "target": "ppp_profiles/index",
+      "line": 124
+    },
+    {
+      "uri": "ppp_profiles",
+      "target": "ppp_profiles/index",
+      "line": 126
+    },
+    {
+      "uri": "ppp-profiles/create",
+      "target": "ppp_profiles/create",
+      "line": 127
+    },
+    {
+      "uri": "ppp_profiles/create",
+      "target": "ppp_profiles/create",
+      "line": 128
+    },
+    {
+      "uri": "ppp-profiles/store",
+      "target": "ppp_profiles/store",
+      "line": 129
+    },
+    {
+      "uri": "ppp_profiles/store",
+      "target": "ppp_profiles/store",
+      "line": 130
+    },
+    {
+      "uri": "ppp-profiles/sync-from-router",
+      "target": "ppp_profiles/sync_from_router",
+      "line": 131
+    },
+    {
+      "uri": "ppp_profiles/sync_from_router",
+      "target": "ppp_profiles/sync_from_router",
+      "line": 132
+    },
+    {
+      "uri": "ppp-profiles/edit/(:num)",
+      "target": "ppp_profiles/edit/$1",
+      "line": 133
+    },
+    {
+      "uri": "ppp_profiles/edit/(:num)",
+      "target": "ppp_profiles/edit/$1",
+      "line": 134
+    },
+    {
+      "uri": "ppp-profiles/update/(:num)",
+      "target": "ppp_profiles/update/$1",
+      "line": 135
+    },
+    {
+      "uri": "ppp_profiles/update/(:num)",
+      "target": "ppp_profiles/update/$1",
+      "line": 136
+    },
+    {
+      "uri": "ppp-profiles/delete/(:num)",
+      "target": "ppp_profiles/delete/$1",
+      "line": 137
+    },
+    {
+      "uri": "ppp_profiles/delete/(:num)",
+      "target": "ppp_profiles/delete/$1",
+      "line": 138
+    },
+    {
+      "uri": "ip-pools",
+      "target": "ip_pools/index",
+      "line": 139
+    },
+    {
+      "uri": "ip_pools",
+      "target": "ip_pools/index",
+      "line": 141
+    },
+    {
+      "uri": "ip-pools/create",
+      "target": "ip_pools/create",
+      "line": 142
+    },
+    {
+      "uri": "ip_pools/create",
+      "target": "ip_pools/create",
+      "line": 143
+    },
+    {
+      "uri": "ip-pools/store",
+      "target": "ip_pools/store",
+      "line": 144
+    },
+    {
+      "uri": "ip_pools/store",
+      "target": "ip_pools/store",
+      "line": 145
+    },
+    {
+      "uri": "ip-pools/sync-from-router",
+      "target": "ip_pools/sync_from_router",
+      "line": 146
+    },
+    {
+      "uri": "ip_pools/sync_from_router",
+      "target": "ip_pools/sync_from_router",
+      "line": 147
+    },
+    {
+      "uri": "ip-pools/refresh-usage",
+      "target": "ip_pools/refresh_usage",
+      "line": 148
+    },
+    {
+      "uri": "ip_pools/refresh_usage",
+      "target": "ip_pools/refresh_usage",
+      "line": 149
+    },
+    {
+      "uri": "ip-pools/edit/(:num)",
+      "target": "ip_pools/edit/$1",
+      "line": 150
+    },
+    {
+      "uri": "ip_pools/edit/(:num)",
+      "target": "ip_pools/edit/$1",
+      "line": 151
+    },
+    {
+      "uri": "ip-pools/update/(:num)",
+      "target": "ip_pools/update/$1",
+      "line": 152
+    },
+    {
+      "uri": "ip_pools/update/(:num)",
+      "target": "ip_pools/update/$1",
+      "line": 153
+    },
+    {
+      "uri": "ip-pools/delete/(:num)",
+      "target": "ip_pools/delete/$1",
+      "line": 154
+    },
+    {
+      "uri": "ip_pools/delete/(:num)",
+      "target": "ip_pools/delete/$1",
+      "line": 155
+    },
+    {
+      "uri": "routers",
+      "target": "routers/index",
+      "line": 156
+    },
+    {
+      "uri": "routers/list",
+      "target": "routers/index",
+      "line": 158
+    },
+    {
+      "uri": "routers/create",
+      "target": "routers/create",
+      "line": 159
+    },
+    {
+      "uri": "routers/store",
+      "target": "routers/store",
+      "line": 160
+    },
+    {
+      "uri": "routers/edit/(:num)",
+      "target": "routers/edit/$1",
+      "line": 161
+    },
+    {
+      "uri": "routers/update/(:num)",
+      "target": "routers/update/$1",
+      "line": 162
+    },
+    {
+      "uri": "routers/delete/(:num)",
+      "target": "routers/delete/$1",
+      "line": 163
+    },
+    {
+      "uri": "routers/test-connection/(:num)",
+      "target": "routers/test_connection/$1",
+      "line": 164
+    },
+    {
+      "uri": "routers/test_connection/(:num)",
+      "target": "routers/test_connection/$1",
+      "line": 165
+    },
+    {
+      "uri": "settings/routers",
+      "target": "routers/index",
+      "line": 166
+    },
+    {
+      "uri": "settings/routers/create",
+      "target": "routers/create",
+      "line": 167
+    },
+    {
+      "uri": "settings/routers/store",
+      "target": "routers/store",
+      "line": 168
+    },
+    {
+      "uri": "settings/routers/edit/(:num)",
+      "target": "routers/edit/$1",
+      "line": 169
+    },
+    {
+      "uri": "settings/routers/update/(:num)",
+      "target": "routers/update/$1",
+      "line": 170
+    },
+    {
+      "uri": "settings/routers/delete/(:num)",
+      "target": "routers/delete/$1",
+      "line": 171
+    },
+    {
+      "uri": "settings/routers/test-connection/(:num)",
+      "target": "routers/test_connection/$1",
+      "line": 172
+    },
+    {
+      "uri": "settings/routers/test_connection/(:num)",
+      "target": "routers/test_connection/$1",
+      "line": 173
+    },
+    {
+      "uri": "router-acs",
+      "target": "routeracs/index",
+      "line": 174
+    },
+    {
+      "uri": "router_acs",
+      "target": "routeracs/index",
+      "line": 176
+    },
+    {
+      "uri": "router-acs/edit/(:num)",
+      "target": "routeracs/edit/$1",
+      "line": 177
+    },
+    {
+      "uri": "router_acs/edit/(:num)",
+      "target": "routeracs/edit/$1",
+      "line": 178
+    },
+    {
+      "uri": "router-acs/update/(:num)",
+      "target": "routeracs/update/$1",
+      "line": 179
+    },
+    {
+      "uri": "router_acs/update/(:num)",
+      "target": "routeracs/update/$1",
+      "line": 180
+    },
+    {
+      "uri": "router-acs/test-connection/(:num)",
+      "target": "routeracs/test_connection/$1",
+      "line": 181
+    },
+    {
+      "uri": "router_acs/test_connection/(:num)",
+      "target": "routeracs/test_connection/$1",
+      "line": 182
+    },
+    {
+      "uri": "settings/router-acs",
+      "target": "routeracs/index",
+      "line": 183
+    },
+    {
+      "uri": "settings/router_acs",
+      "target": "routeracs/index",
+      "line": 184
+    },
+    {
+      "uri": "settings/router-acs/edit/(:num)",
+      "target": "routeracs/edit/$1",
+      "line": 185
+    },
+    {
+      "uri": "settings/router_acs/edit/(:num)",
+      "target": "routeracs/edit/$1",
+      "line": 186
+    },
+    {
+      "uri": "settings/router-acs/update/(:num)",
+      "target": "routeracs/update/$1",
+      "line": 187
+    },
+    {
+      "uri": "settings/router_acs/update/(:num)",
+      "target": "routeracs/update/$1",
+      "line": 188
+    },
+    {
+      "uri": "settings/router-acs/test-connection/(:num)",
+      "target": "routeracs/test_connection/$1",
+      "line": 189
+    },
+    {
+      "uri": "settings/router_acs/test_connection/(:num)",
+      "target": "routeracs/test_connection/$1",
+      "line": 190
+    },
+    {
+      "uri": "master-references",
+      "target": "master_references/index",
+      "line": 191
+    },
+    {
+      "uri": "master_references",
+      "target": "master_references/index",
+      "line": 193
+    },
+    {
+      "uri": "master-references/locations",
+      "target": "master_references/locations",
+      "line": 194
+    },
+    {
+      "uri": "master_references/locations",
+      "target": "master_references/locations",
+      "line": 195
+    },
+    {
+      "uri": "master-references/store-location",
+      "target": "master_references/store_location",
+      "line": 196
+    },
+    {
+      "uri": "master_references/store_location",
+      "target": "master_references/store_location",
+      "line": 197
+    },
+    {
+      "uri": "master-references/update-location/(:num)",
+      "target": "master_references/update_location/$1",
+      "line": 198
+    },
+    {
+      "uri": "master_references/update_location/(:num)",
+      "target": "master_references/update_location/$1",
+      "line": 199
+    },
+    {
+      "uri": "master-references/delete-location/(:num)",
+      "target": "master_references/delete_location/$1",
+      "line": 200
+    },
+    {
+      "uri": "master_references/delete_location/(:num)",
+      "target": "master_references/delete_location/$1",
+      "line": 201
+    },
+    {
+      "uri": "master-references/bulk-update-locations",
+      "target": "master_references/bulk_update_locations",
+      "line": 202
+    },
+    {
+      "uri": "master_references/bulk_update_locations",
+      "target": "master_references/bulk_update_locations",
+      "line": 203
+    },
+    {
+      "uri": "master-references/bulk-delete-locations",
+      "target": "master_references/bulk_delete_locations",
+      "line": 204
+    },
+    {
+      "uri": "master_references/bulk_delete_locations",
+      "target": "master_references/bulk_delete_locations",
+      "line": 205
+    },
+    {
+      "uri": "master-references/olts",
+      "target": "master_references/olts",
+      "line": 206
+    },
+    {
+      "uri": "master_references/olts",
+      "target": "master_references/olts",
+      "line": 207
+    },
+    {
+      "uri": "master-references/store-olt",
+      "target": "master_references/store_olt",
+      "line": 208
+    },
+    {
+      "uri": "master_references/store_olt",
+      "target": "master_references/store_olt",
+      "line": 209
+    },
+    {
+      "uri": "master-references/update-olt/(:num)",
+      "target": "master_references/update_olt/$1",
+      "line": 210
+    },
+    {
+      "uri": "master_references/update_olt/(:num)",
+      "target": "master_references/update_olt/$1",
+      "line": 211
+    },
+    {
+      "uri": "master-references/delete-olt/(:num)",
+      "target": "master_references/delete_olt/$1",
+      "line": 212
+    },
+    {
+      "uri": "master_references/delete_olt/(:num)",
+      "target": "master_references/delete_olt/$1",
+      "line": 213
+    },
+    {
+      "uri": "master-references/bulk-update-olts",
+      "target": "master_references/bulk_update_olts",
+      "line": 214
+    },
+    {
+      "uri": "master_references/bulk_update_olts",
+      "target": "master_references/bulk_update_olts",
+      "line": 215
+    },
+    {
+      "uri": "master-references/bulk-delete-olts",
+      "target": "master_references/bulk_delete_olts",
+      "line": 216
+    },
+    {
+      "uri": "master_references/bulk_delete_olts",
+      "target": "master_references/bulk_delete_olts",
+      "line": 217
+    },
+    {
+      "uri": "billing",
+      "target": "billing_ui/index",
+      "line": 218
+    },
+    {
+      "uri": "billing/list",
+      "target": "billing_ui/index",
+      "line": 220
+    },
+    {
+      "uri": "billing/generate-monthly",
+      "target": "billing/generate_monthly_invoices",
+      "line": 221
+    },
+    {
+      "uri": "billing/auto-suspend",
+      "target": "billing/auto_suspend",
+      "line": 222
+    },
+    {
+      "uri": "billing/record-payment",
+      "target": "billing/record_payment",
+      "line": 223
+    },
+    {
+      "uri": "billing/manual-generate",
+      "target": "billing/manual_generate_invoice",
+      "line": 224
+    },
+    {
+      "uri": "billing/manual_generate",
+      "target": "billing/manual_generate_invoice",
+      "line": 225
+    },
+    {
+      "uri": "billing/manual-isolir",
+      "target": "billing/manual_isolir",
+      "line": 226
+    },
+    {
+      "uri": "billing/manual_isolir",
+      "target": "billing/manual_isolir",
+      "line": 227
+    },
+    {
+      "uri": "billing/acs-gap",
+      "target": "billing/acs_gap",
+      "line": 228
+    },
+    {
+      "uri": "billing/acs_gap",
+      "target": "billing/acs_gap",
+      "line": 229
+    },
+    {
+      "uri": "billing/view/(:num)",
+      "target": "billing/view_invoice/$1",
+      "line": 230
+    },
+    {
+      "uri": "billing/edit/(:num)",
+      "target": "billing/edit_invoice/$1",
+      "line": 231
+    },
+    {
+      "uri": "billing/update/(:num)",
+      "target": "billing/update_invoice/$1",
+      "line": 232
+    },
+    {
+      "uri": "billing/mark-paid/(:num)",
+      "target": "billing/mark_paid/$1",
+      "line": 233
+    },
+    {
+      "uri": "billing/mark_paid/(:num)",
+      "target": "billing/mark_paid/$1",
+      "line": 234
+    },
+    {
+      "uri": "billing/mark-overdue/(:num)",
+      "target": "billing/mark_overdue/$1",
+      "line": 235
+    },
+    {
+      "uri": "billing/mark_overdue/(:num)",
+      "target": "billing/mark_overdue/$1",
+      "line": 236
+    },
+    {
+      "uri": "billing/delete-ont/(:num)",
+      "target": "billing/delete_ont/$1",
+      "line": 237
+    },
+    {
+      "uri": "billing/delete_ont/(:num)",
+      "target": "billing/delete_ont/$1",
+      "line": 238
+    },
+    {
+      "uri": "billing/delete/(:num)",
+      "target": "billing/delete_invoice/$1",
+      "line": 239
+    },
+    {
+      "uri": "billing/delete_invoice/(:num)",
+      "target": "billing/delete_invoice/$1",
+      "line": 240
+    },
+    {
+      "uri": "billing/bulk-action",
+      "target": "billing/bulk_action",
+      "line": 241
+    },
+    {
+      "uri": "billing/bulk_action",
+      "target": "billing/bulk_action",
+      "line": 242
+    },
+    {
+      "uri": "invoice",
+      "target": "billing_ui/index",
+      "line": 243
+    },
+    {
+      "uri": "invoice/list",
+      "target": "billing_ui/index",
+      "line": 244
+    },
+    {
+      "uri": "admin-whatsapp",
+      "target": "admin_whatsapp/index",
+      "line": 245
+    },
+    {
+      "uri": "admin_whatsapp",
+      "target": "admin_whatsapp/index",
+      "line": 247
+    },
+    {
+      "uri": "admin-whatsapp/detail/(:num)",
+      "target": "admin_whatsapp/detail/$1",
+      "line": 248
+    },
+    {
+      "uri": "admin_whatsapp/detail/(:num)",
+      "target": "admin_whatsapp/detail/$1",
+      "line": 249
+    },
+    {
+      "uri": "admin-whatsapp/resend/(:num)",
+      "target": "admin_whatsapp/resend/$1",
+      "line": 250
+    },
+    {
+      "uri": "admin_whatsapp/resend/(:num)",
+      "target": "admin_whatsapp/resend/$1",
+      "line": 251
+    },
+    {
+      "uri": "manual-isolir",
+      "target": "manual_isolir/index",
+      "line": 252
+    },
+    {
+      "uri": "manual_isolir",
+      "target": "manual_isolir/index",
+      "line": 254
+    },
+    {
+      "uri": "manual-isolir/popup",
+      "target": "manual_isolir/popup",
+      "line": 255
+    },
+    {
+      "uri": "manual_isolir/popup",
+      "target": "manual_isolir/popup",
+      "line": 256
+    },
+    {
+      "uri": "manual-isolir/suggest-user",
+      "target": "manual_isolir/suggest_user",
+      "line": 257
+    },
+    {
+      "uri": "manual_isolir/suggest_user",
+      "target": "manual_isolir/suggest_user",
+      "line": 258
+    },
+    {
+      "uri": "manual-isolir/isolate",
+      "target": "manual_isolir/isolate_user",
+      "line": 259
+    },
+    {
+      "uri": "manual_isolir/isolate_user",
+      "target": "manual_isolir/isolate_user",
+      "line": 260
+    },
+    {
+      "uri": "manual-isolir/release",
+      "target": "manual_isolir/release_user",
+      "line": 261
+    },
+    {
+      "uri": "manual_isolir/release_user",
+      "target": "manual_isolir/release_user",
+      "line": 262
+    },
+    {
+      "uri": "network/fiber-network-map",
+      "target": "NetworkMap/index",
+      "line": 263
+    },
+    {
+      "uri": "network/fiber_network_map",
+      "target": "NetworkMap/index",
+      "line": 265
+    },
+    {
+      "uri": "network-map",
+      "target": "NetworkMap/index",
+      "line": 266
+    },
+    {
+      "uri": "network_map",
+      "target": "NetworkMap/index",
+      "line": 267
+    },
+    {
+      "uri": "network/nodes",
+      "target": "NetworkMap/nodes",
+      "line": 268
+    },
+    {
+      "uri": "network/node-management",
+      "target": "NetworkMap/nodes",
+      "line": 269
+    },
+    {
+      "uri": "network/node_management",
+      "target": "NetworkMap/nodes",
+      "line": 270
+    },
+    {
+      "uri": "api/network/map",
+      "target": "NetworkMap/get_map_data",
+      "line": 271
+    },
+    {
+      "uri": "api/network/routers",
+      "target": "NetworkMap/get_router_list",
+      "line": 273
+    },
+    {
+      "uri": "api/network/router/create",
+      "target": "NetworkMap/create_router",
+      "line": 274
+    },
+    {
+      "uri": "api/network/router/update",
+      "target": "NetworkMap/update_router",
+      "line": 275
+    },
+    {
+      "uri": "api/network/router/delete",
+      "target": "NetworkMap/delete_router",
+      "line": 276
+    },
+    {
+      "uri": "api/network/olt/create",
+      "target": "NetworkMap/create_olt",
+      "line": 277
+    },
+    {
+      "uri": "api/network/olt/update",
+      "target": "NetworkMap/update_olt",
+      "line": 278
+    },
+    {
+      "uri": "api/network/olt/delete",
+      "target": "NetworkMap/delete_olt",
+      "line": 279
+    },
+    {
+      "uri": "api/network/odc/create",
+      "target": "NetworkMap/create_odc",
+      "line": 280
+    },
+    {
+      "uri": "api/network/odc/update",
+      "target": "NetworkMap/update_odc",
+      "line": 281
+    },
+    {
+      "uri": "api/network/odc/delete",
+      "target": "NetworkMap/delete_odc",
+      "line": 282
+    },
+    {
+      "uri": "api/network/odp/create",
+      "target": "NetworkMap/create_odp",
+      "line": 283
+    },
+    {
+      "uri": "api/network/odp/update",
+      "target": "NetworkMap/update_odp",
+      "line": 284
+    },
+    {
+      "uri": "api/network/odp/delete",
+      "target": "NetworkMap/delete_odp",
+      "line": 285
+    },
+    {
+      "uri": "static-ip-sync",
+      "target": "static_ip_sync/index",
+      "line": 286
+    },
+    {
+      "uri": "static_ip_sync",
+      "target": "static_ip_sync/index",
+      "line": 288
+    },
+    {
+      "uri": "router-sync",
+      "target": "static_ip_sync/index",
+      "line": 289
+    },
+    {
+      "uri": "router_sync",
+      "target": "static_ip_sync/index",
+      "line": 290
+    },
+    {
+      "uri": "static-ip-sync/run-sync",
+      "target": "static_ip_sync/run_sync",
+      "line": 291
+    },
+    {
+      "uri": "static_ip_sync/run_sync",
+      "target": "static_ip_sync/run_sync",
+      "line": 292
+    },
+    {
+      "uri": "static-ip-sync/run-check-isolir",
+      "target": "static_ip_sync/run_check_isolir",
+      "line": 293
+    },
+    {
+      "uri": "static_ip_sync/run_check_isolir",
+      "target": "static_ip_sync/run_check_isolir",
+      "line": 294
+    },
+    {
+      "uri": "hotspot",
+      "target": "hotspot/index",
+      "line": 295
+    },
+    {
+      "uri": "hotspot/index",
+      "target": "hotspot/index",
+      "line": 297
+    },
+    {
+      "uri": "hotspot/add-user",
+      "target": "hotspot/add_user",
+      "line": 298
+    },
+    {
+      "uri": "hotspot/add_user",
+      "target": "hotspot/add_user",
+      "line": 299
+    },
+    {
+      "uri": "hotspot/generate-users",
+      "target": "hotspot/generate_users",
+      "line": 300
+    },
+    {
+      "uri": "hotspot/generate_users",
+      "target": "hotspot/generate_users",
+      "line": 301
+    },
+    {
+      "uri": "hotspot/add-profile",
+      "target": "hotspot/add_profile",
+      "line": 302
+    },
+    {
+      "uri": "hotspot/add_profile",
+      "target": "hotspot/add_profile",
+      "line": 303
+    },
+    {
+      "uri": "ont-remote",
+      "target": "ont_remote/index",
+      "line": 304
+    },
+    {
+      "uri": "ont_remote",
+      "target": "ont_remote/index",
+      "line": 306
+    },
+    {
+      "uri": "ont-remote/detail",
+      "target": "ont_remote/detail",
+      "line": 307
+    },
+    {
+      "uri": "ont_remote/detail",
+      "target": "ont_remote/detail",
+      "line": 308
+    },
+    {
+      "uri": "ont-remote/set-wifi",
+      "target": "ont_remote/set_wifi",
+      "line": 309
+    },
+    {
+      "uri": "ont_remote/set_wifi",
+      "target": "ont_remote/set_wifi",
+      "line": 310
+    },
+    {
+      "uri": "ont-remote/reboot",
+      "target": "ont_remote/reboot",
+      "line": 311
+    },
+    {
+      "uri": "ont_remote/reboot",
+      "target": "ont_remote/reboot",
+      "line": 312
+    },
+    {
+      "uri": "ont-remote/connected-devices",
+      "target": "ont_remote/connected_devices",
+      "line": 313
+    },
+    {
+      "uri": "ont_remote/connected_devices",
+      "target": "ont_remote/connected_devices",
+      "line": 314
+    },
+    {
+      "uri": "ont-remote/summary",
+      "target": "ont_remote/summary",
+      "line": 315
+    },
+    {
+      "uri": "ont_remote/summary",
+      "target": "ont_remote/summary",
+      "line": 316
+    },
+    {
+      "uri": "ont",
+      "target": "ont/index",
+      "line": 319
+    },
+    {
+      "uri": "ont/index",
+      "target": "ont/index",
+      "line": 320
+    },
+    {
+      "uri": "ont/online",
+      "target": "ont/online",
+      "line": 321
+    },
+    {
+      "uri": "ont/offline",
+      "target": "ont/offline",
+      "line": 322
+    },
+    {
+      "uri": "ont/index/(:num)",
+      "target": "ont/index/$1",
+      "line": 323
+    },
+    {
+      "uri": "ont/online/(:num)",
+      "target": "ont/online/$1",
+      "line": 324
+    },
+    {
+      "uri": "ont/offline/(:num)",
+      "target": "ont/offline/$1",
+      "line": 325
+    },
+    {
+      "uri": "ont/detail/(:any)",
+      "target": "ont/detail/$1",
+      "line": 326
+    },
+    {
+      "uri": "ont/reboot/(:any)",
+      "target": "ont/reboot/$1",
+      "line": 327
+    },
+    {
+      "uri": "ont/set-wifi",
+      "target": "ont/set_wifi",
+      "line": 328
+    },
+    {
+      "uri": "ont/set_wifi",
+      "target": "ont/set_wifi",
+      "line": 329
+    },
+    {
+      "uri": "ont/sync",
+      "target": "ont/sync",
+      "line": 330
+    },
+    {
+      "uri": "ont/sync/(:num)",
+      "target": "ont/sync/$1",
+      "line": 331
+    },
+    {
+      "uri": "cashflow",
+      "target": "cashflow_ui/index",
+      "line": 332
+    },
+    {
+      "uri": "cashflow/list",
+      "target": "cashflow_ui/index",
+      "line": 334
+    },
+    {
+      "uri": "cashflow/add-expense",
+      "target": "cashflow_ui/add_expense",
+      "line": 335
+    },
+    {
+      "uri": "cashflow/add_expense",
+      "target": "cashflow_ui/add_expense",
+      "line": 336
+    },
+    {
+      "uri": "cashflow/add-income",
+      "target": "cashflow_ui/add_income",
+      "line": 337
+    },
+    {
+      "uri": "cashflow/add_income",
+      "target": "cashflow_ui/add_income",
+      "line": 338
+    },
+    {
+      "uri": "cashflow/bulk-action",
+      "target": "cashflow_ui/bulk_action",
+      "line": 339
+    },
+    {
+      "uri": "cashflow/bulk_action",
+      "target": "cashflow_ui/bulk_action",
+      "line": 340
+    },
+    {
+      "uri": "cashflow/update/(:num)",
+      "target": "cashflow_ui/update/$1",
+      "line": 341
+    },
+    {
+      "uri": "cashflow/delete/(:num)",
+      "target": "cashflow_ui/delete/$1",
+      "line": 342
+    },
+    {
+      "uri": "cashflow/review-request/(:num)",
+      "target": "cashflow_ui/review_request/$1",
+      "line": 343
+    },
+    {
+      "uri": "cashflow/review_request/(:num)",
+      "target": "cashflow_ui/review_request/$1",
+      "line": 344
+    },
+    {
+      "uri": "workorder",
+      "target": "workorders/index",
+      "line": 345
+    },
+    {
+      "uri": "work_order",
+      "target": "workorders/index",
+      "line": 347
+    },
+    {
+      "uri": "workorders",
+      "target": "workorders/index",
+      "line": 348
+    },
+    {
+      "uri": "workorders/list",
+      "target": "workorders/index",
+      "line": 349
+    },
+    {
+      "uri": "workorders/store",
+      "target": "workorders/store",
+      "line": 350
+    },
+    {
+      "uri": "workorders/delete/(:num)",
+      "target": "workorders/delete/$1",
+      "line": 351
+    },
+    {
+      "uri": "workorders/delete-wo/(:num)",
+      "target": "workorders/delete/$1",
+      "line": 352
+    },
+    {
+      "uri": "workorders/mark_done/(:num)",
+      "target": "workorders/mark_done/$1",
+      "line": 353
+    },
+    {
+      "uri": "workorders/mark-done/(:num)",
+      "target": "workorders/mark_done/$1",
+      "line": 354
+    },
+    {
+      "uri": "helpdesk",
+      "target": "helpdesk/index",
+      "line": 355
+    },
+    {
+      "uri": "helpdesk/index",
+      "target": "helpdesk/index",
+      "line": 357
+    },
+    {
+      "uri": "helpdesk/dashboard",
+      "target": "helpdesk_dashboard/index",
+      "line": 358
+    },
+    {
+      "uri": "helpdesk-dashboard",
+      "target": "helpdesk_dashboard/index",
+      "line": 359
+    },
+    {
+      "uri": "helpdesk_dashboard",
+      "target": "helpdesk_dashboard/index",
+      "line": 360
+    },
+    {
+      "uri": "helpdesk-dashboard/export-pdf",
+      "target": "helpdesk_dashboard/export_pdf",
+      "line": 361
+    },
+    {
+      "uri": "helpdesk_dashboard/export_pdf",
+      "target": "helpdesk_dashboard/export_pdf",
+      "line": 362
+    },
+    {
+      "uri": "helpdesk-dashboard/export-excel",
+      "target": "helpdesk_dashboard/export_excel",
+      "line": 363
+    },
+    {
+      "uri": "helpdesk_dashboard/export_excel",
+      "target": "helpdesk_dashboard/export_excel",
+      "line": 364
+    },
+    {
+      "uri": "teknisi-dashboard",
+      "target": "teknisi_dashboard/index",
+      "line": 365
+    },
+    {
+      "uri": "teknisi_dashboard",
+      "target": "teknisi_dashboard/index",
+      "line": 366
+    },
+    {
+      "uri": "teknisi/dashboard",
+      "target": "teknisi_dashboard/index",
+      "line": 367
+    },
+    {
+      "uri": "teknisi-dashboard/export-pdf",
+      "target": "teknisi_dashboard/export_pdf",
+      "line": 368
+    },
+    {
+      "uri": "teknisi_dashboard/export_pdf",
+      "target": "teknisi_dashboard/export_pdf",
+      "line": 369
+    },
+    {
+      "uri": "helpdesk/create",
+      "target": "helpdesk/create",
+      "line": 370
+    },
+    {
+      "uri": "helpdesk/store",
+      "target": "helpdesk/store",
+      "line": 371
+    },
+    {
+      "uri": "helpdesk/detail/(:num)",
+      "target": "helpdesk/detail/$1",
+      "line": 372
+    },
+    {
+      "uri": "helpdesk/customer-ppp/(:num)",
+      "target": "helpdesk/customer_ppp_detail/$1",
+      "line": 373
+    },
+    {
+      "uri": "helpdesk/customer_ppp/(:num)",
+      "target": "helpdesk/customer_ppp_detail/$1",
+      "line": 374
+    },
+    {
+      "uri": "helpdesk/customer_ppp_detail/(:num)",
+      "target": "helpdesk/customer_ppp_detail/$1",
+      "line": 375
+    },
+    {
+      "uri": "helpdesk/update-status",
+      "target": "helpdesk/update_status",
+      "line": 376
+    },
+    {
+      "uri": "helpdesk/update_status",
+      "target": "helpdesk/update_status",
+      "line": 377
+    },
+    {
+      "uri": "helpdesk/mark-done/(:num)",
+      "target": "helpdesk/mark_done/$1",
+      "line": 378
+    },
+    {
+      "uri": "helpdesk/mark_done/(:num)",
+      "target": "helpdesk/mark_done/$1",
+      "line": 379
+    },
+    {
+      "uri": "helpdesk/add-reply/(:num)",
+      "target": "helpdesk/add_reply/$1",
+      "line": 380
+    },
+    {
+      "uri": "helpdesk/add_reply/(:num)",
+      "target": "helpdesk/add_reply/$1",
+      "line": 381
+    },
+    {
+      "uri": "helpdesk/upload-attachment/(:num)",
+      "target": "helpdesk/upload_attachment/$1",
+      "line": 382
+    },
+    {
+      "uri": "helpdesk/upload_attachment/(:num)",
+      "target": "helpdesk/upload_attachment/$1",
+      "line": 383
+    },
+    {
+      "uri": "helpdesk/delete/(:num)",
+      "target": "helpdesk/delete/$1",
+      "line": 384
+    },
+    {
+      "uri": "helpdesk-report",
+      "target": "helpdesk_report/index",
+      "line": 385
+    },
+    {
+      "uri": "helpdesk_report",
+      "target": "helpdesk_report/index",
+      "line": 387
+    },
+    {
+      "uri": "helpdesk-report/export-pdf",
+      "target": "helpdesk_report/export_pdf",
+      "line": 388
+    },
+    {
+      "uri": "helpdesk_report/export_pdf",
+      "target": "helpdesk_report/export_pdf",
+      "line": 389
+    },
+    {
+      "uri": "helpdesk-cron/check-sla",
+      "target": "helpdesk_cron/check_sla",
+      "line": 390
+    },
+    {
+      "uri": "helpdesk_cron/check_sla",
+      "target": "helpdesk_cron/check_sla",
+      "line": 392
+    },
+    {
+      "uri": "tickets",
+      "target": "tickets/index",
+      "line": 393
+    },
+    {
+      "uri": "tickets/list",
+      "target": "tickets/index",
+      "line": 395
+    },
+    {
+      "uri": "tickets/store",
+      "target": "tickets/store",
+      "line": 396
+    },
+    {
+      "uri": "tickets/mark_done/(:num)",
+      "target": "tickets/mark_done/$1",
+      "line": 397
+    },
+    {
+      "uri": "tickets/mark-done/(:num)",
+      "target": "tickets/mark_done/$1",
+      "line": 398
+    },
+    {
+      "uri": "helpdesk/list",
+      "target": "helpdesk/index",
+      "line": 399
+    },
+    {
+      "uri": "user-logs",
+      "target": "user_logs/index",
+      "line": 400
+    },
+    {
+      "uri": "user_logs",
+      "target": "user_logs/index",
+      "line": 402
+    },
+    {
+      "uri": "pppoe-sync",
+      "target": "settings/pppoe_sync",
+      "line": 403
+    },
+    {
+      "uri": "pppoe_sync",
+      "target": "settings/pppoe_sync",
+      "line": 405
+    },
+    {
+      "uri": "pppoe-sync/save",
+      "target": "settings/save_pppoe_sync",
+      "line": 406
+    },
+    {
+      "uri": "pppoe_sync/save",
+      "target": "settings/save_pppoe_sync",
+      "line": 407
+    },
+    {
+      "uri": "pppoe-sync/sync-now",
+      "target": "settings/sync_pppoe_now",
+      "line": 408
+    },
+    {
+      "uri": "pppoe-sync/sync-now/(:num)",
+      "target": "settings/sync_pppoe_now/$1",
+      "line": 409
+    },
+    {
+      "uri": "pppoe_sync/sync_now",
+      "target": "settings/sync_pppoe_now",
+      "line": 410
+    },
+    {
+      "uri": "pppoe_sync/sync_now/(:num)",
+      "target": "settings/sync_pppoe_now/$1",
+      "line": 411
+    },
+    {
+      "uri": "pppoe-sync/migrate-customers",
+      "target": "settings/migrate_ppp_secret",
+      "line": 412
+    },
+    {
+      "uri": "pppoe_sync/migrate_customers",
+      "target": "settings/migrate_ppp_secret",
+      "line": 413
+    },
+    {
+      "uri": "static-packages",
+      "target": "ppp_profiles/index",
+      "line": 414
+    },
+    {
+      "uri": "static_packages",
+      "target": "ppp_profiles/index",
+      "line": 416
+    },
+    {
+      "uri": "static-packages/edit/(:num)",
+      "target": "ppp_profiles/edit/$1",
+      "line": 417
+    },
+    {
+      "uri": "static_packages/edit/(:num)",
+      "target": "ppp_profiles/edit/$1",
+      "line": 418
+    },
+    {
+      "uri": "static-packages/update/(:num)",
+      "target": "ppp_profiles/update/$1",
+      "line": 419
+    },
+    {
+      "uri": "static_packages/update/(:num)",
+      "target": "ppp_profiles/update/$1",
+      "line": 420
+    },
+    {
+      "uri": "settings",
+      "target": "settings/index",
+      "line": 421
+    },
+    {
+      "uri": "settings/mikrotik",
+      "target": "settings/mikrotik",
+      "line": 423
+    },
+    {
+      "uri": "settings/save_mikrotik",
+      "target": "settings/save_mikrotik",
+      "line": 424
+    },
+    {
+      "uri": "settings/test_mikrotik",
+      "target": "settings/test_mikrotik",
+      "line": 425
+    },
+    {
+      "uri": "settings/database",
+      "target": "settings/database",
+      "line": 426
+    },
+    {
+      "uri": "settings/save_database",
+      "target": "settings/save_database",
+      "line": 427
+    },
+    {
+      "uri": "settings/test_database",
+      "target": "settings/test_database",
+      "line": 428
+    },
+    {
+      "uri": "settings/telegram",
+      "target": "settings/telegram",
+      "line": 429
+    },
+    {
+      "uri": "settings/save_telegram",
+      "target": "settings/save_telegram",
+      "line": 430
+    },
+    {
+      "uri": "settings/test_telegram",
+      "target": "settings/test_telegram",
+      "line": 431
+    },
+    {
+      "uri": "settings/pppoe_sync",
+      "target": "settings/pppoe_sync",
+      "line": 432
+    },
+    {
+      "uri": "settings/save_pppoe_sync",
+      "target": "settings/save_pppoe_sync",
+      "line": 433
+    },
+    {
+      "uri": "settings/sync_pppoe",
+      "target": "settings/sync_pppoe",
+      "line": 434
+    },
+    {
+      "uri": "settings/sync_pppoe_now",
+      "target": "settings/sync_pppoe_now",
+      "line": 435
+    },
+    {
+      "uri": "settings/migrate_ppp_secret",
+      "target": "settings/migrate_ppp_secret",
+      "line": 436
+    },
+    {
+      "uri": "settings/migrate-ppp-secret",
+      "target": "settings/migrate_ppp_secret",
+      "line": 437
+    },
+    {
+      "uri": "users",
+      "target": "users/index",
+      "line": 438
+    },
+    {
+      "uri": "users/create",
+      "target": "users/create",
+      "line": 440
+    },
+    {
+      "uri": "users/store",
+      "target": "users/store",
+      "line": 441
+    },
+    {
+      "uri": "users/edit/(:num)",
+      "target": "users/edit/$1",
+      "line": 442
+    },
+    {
+      "uri": "users/update/(:num)",
+      "target": "users/update/$1",
+      "line": 443
+    },
+    {
+      "uri": "users/delete/(:num)",
+      "target": "users/delete/$1",
+      "line": 444
+    },
+    {
+      "uri": "provisioning/store",
+      "target": "provisioning/store",
+      "line": 447
+    },
+    {
+      "uri": "telegram/webhook",
+      "target": "telegram_webhook/index",
+      "line": 448
+    },
+    {
+      "uri": "cron/generate-invoice",
+      "target": "cron/billing_cron/generate_invoice",
+      "line": 451
+    },
+    {
+      "uri": "cron/auto-suspend",
+      "target": "cron/billing_cron/auto_suspend",
+      "line": 452
+    },
+    {
+      "uri": "cron/sync-static-ip-arp",
+      "target": "cron/static_ip_cron/sync_static_ip_arp",
+      "line": 453
+    },
+    {
+      "uri": "cron/sync_static_ip_arp",
+      "target": "cron/static_ip_cron/sync_static_ip_arp",
+      "line": 454
+    },
+    {
+      "uri": "cron/check-static-isolir",
+      "target": "cron/static_ip_cron/check_static_isolir",
+      "line": 455
+    },
+    {
+      "uri": "cron/check_static_isolir",
+      "target": "cron/static_ip_cron/check_static_isolir",
+      "line": 456
+    },
+    {
+      "uri": "cron/monitoring-health",
+      "target": "cron/monitoring_cron/check_health",
+      "line": 457
+    },
+    {
+      "uri": "cron/monitoring_health",
+      "target": "cron/monitoring_cron/check_health",
+      "line": 458
+    }
+  ],
+  "controllers": [
+    {
+      "path": "application/controllers/Admin_whatsapp.php",
+      "class": "Admin_whatsapp",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 16
+        },
+        {
+          "name": "detail",
+          "arguments": "$id",
+          "line": 35
+        },
+        {
+          "name": "resend",
+          "arguments": "$id",
+          "line": 48
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Analytics.php",
+      "class": "Analytics",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "revenue",
+          "arguments": "",
+          "line": 23
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Auth.php",
+      "class": "Auth",
+      "extends": "CI_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 16
+        },
+        {
+          "name": "login",
+          "arguments": "",
+          "line": 21
+        },
+        {
+          "name": "process_login",
+          "arguments": "",
+          "line": 38
+        },
+        {
+          "name": "logout",
+          "arguments": "",
+          "line": 192
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Billing.php",
+      "class": "Billing",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 17
+        },
+        {
+          "name": "generate_monthly_invoices",
+          "arguments": "",
+          "line": 22
+        },
+        {
+          "name": "manual_generate_invoice",
+          "arguments": "",
+          "line": 61
+        },
+        {
+          "name": "manual_isolir",
+          "arguments": "",
+          "line": 300
+        },
+        {
+          "name": "auto_suspend",
+          "arguments": "",
+          "line": 389
+        },
+        {
+          "name": "record_payment",
+          "arguments": "",
+          "line": 423
+        },
+        {
+          "name": "view_invoice",
+          "arguments": "$id",
+          "line": 458
+        },
+        {
+          "name": "edit_invoice",
+          "arguments": "$id",
+          "line": 491
+        },
+        {
+          "name": "update_invoice",
+          "arguments": "$id",
+          "line": 504
+        },
+        {
+          "name": "mark_paid",
+          "arguments": "$id",
+          "line": 788
+        },
+        {
+          "name": "mark_overdue",
+          "arguments": "$id",
+          "line": 850
+        },
+        {
+          "name": "delete_invoice",
+          "arguments": "$id",
+          "line": 909
+        },
+        {
+          "name": "delete_ont",
+          "arguments": "$id",
+          "line": 927
+        },
+        {
+          "name": "acs_gap",
+          "arguments": "",
+          "line": 978
+        },
+        {
+          "name": "bulk_action",
+          "arguments": "",
+          "line": 992
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Billing_ui.php",
+      "class": "Billing_ui",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 14
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Cashflow.php",
+      "class": "Cashflow",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 20
+        },
+        {
+          "name": "add_expense",
+          "arguments": "",
+          "line": 34
+        },
+        {
+          "name": "monthly_report",
+          "arguments": "",
+          "line": 86
+        },
+        {
+          "name": "export_excel",
+          "arguments": "",
+          "line": 114
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Cashflow_ui.php",
+      "class": "Cashflow_ui",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 14
+        },
+        {
+          "name": "add_income",
+          "arguments": "",
+          "line": 99
+        },
+        {
+          "name": "add_expense",
+          "arguments": "",
+          "line": 223
+        },
+        {
+          "name": "update",
+          "arguments": "$id",
+          "line": 348
+        },
+        {
+          "name": "delete",
+          "arguments": "$id",
+          "line": 478
+        },
+        {
+          "name": "review_request",
+          "arguments": "$request_id",
+          "line": 543
+        },
+        {
+          "name": "bulk_action",
+          "arguments": "",
+          "line": 676
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/CronNotification.php",
+      "class": "CronNotification",
+      "extends": "CI_Controller",
+      "methods": [
+        {
+          "name": "run_all",
+          "arguments": "",
+          "line": 14
+        },
+        {
+          "name": "check_overdue_invoice",
+          "arguments": "",
+          "line": 33
+        },
+        {
+          "name": "check_router_status",
+          "arguments": "",
+          "line": 41
+        },
+        {
+          "name": "check_ticket_pending",
+          "arguments": "",
+          "line": 49
+        },
+        {
+          "name": "check_inventory_minimum",
+          "arguments": "",
+          "line": 57
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Cron_whatsapp.php",
+      "class": "Cron_whatsapp",
+      "extends": "CI_Controller",
+      "methods": [
+        {
+          "name": "process_queue",
+          "arguments": "$limit = null",
+          "line": 17
+        },
+        {
+          "name": "reminder_due",
+          "arguments": "",
+          "line": 29
+        },
+        {
+          "name": "reminder_overdue",
+          "arguments": "",
+          "line": 100
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/CustomerUpgrade.php",
+      "class": "CustomerUpgrade",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 20
+        },
+        {
+          "name": "show_form",
+          "arguments": "$customer_id = 0",
+          "line": 74
+        },
+        {
+          "name": "calculate_prorate",
+          "arguments": "",
+          "line": 141
+        },
+        {
+          "name": "process_upgrade",
+          "arguments": "",
+          "line": 236
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Customers.php",
+      "class": "Customers",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 40
+        },
+        {
+          "name": "create",
+          "arguments": "",
+          "line": 66
+        },
+        {
+          "name": "store",
+          "arguments": "",
+          "line": 71
+        },
+        {
+          "name": "generate_credential",
+          "arguments": "",
+          "line": 346
+        },
+        {
+          "name": "preview_remote_ip",
+          "arguments": "",
+          "line": 382
+        },
+        {
+          "name": "suggest_remote_ip",
+          "arguments": "",
+          "line": 420
+        },
+        {
+          "name": "edit",
+          "arguments": "$id = null",
+          "line": 425
+        },
+        {
+          "name": "update",
+          "arguments": "$id = null",
+          "line": 438
+        },
+        {
+          "name": "delete",
+          "arguments": "$id = null",
+          "line": 640
+        },
+        {
+          "name": "bulk_update_collection_method",
+          "arguments": "",
+          "line": 691
+        },
+        {
+          "name": "bulk_delete",
+          "arguments": "",
+          "line": 735
+        },
+        {
+          "name": "bulk_disable",
+          "arguments": "",
+          "line": 846
+        },
+        {
+          "name": "bulk_generate_invoice",
+          "arguments": "",
+          "line": 961
+        },
+        {
+          "name": "unique_pppoe_username",
+          "arguments": "$username, $ignore_id = 0",
+          "line": 1045
+        },
+        {
+          "name": "valid_billing_cycle_start",
+          "arguments": "$value",
+          "line": 1254
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Dashboard.php",
+      "class": "Dashboard",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 18
+        },
+        {
+          "name": "switch_router",
+          "arguments": "$router_id = null",
+          "line": 84
+        },
+        {
+          "name": "ppp_active_json",
+          "arguments": "",
+          "line": 488
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Helpdesk.php",
+      "class": "Helpdesk",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 19
+        },
+        {
+          "name": "dashboard",
+          "arguments": "",
+          "line": 59
+        },
+        {
+          "name": "create",
+          "arguments": "",
+          "line": 78
+        },
+        {
+          "name": "store",
+          "arguments": "",
+          "line": 90
+        },
+        {
+          "name": "detail",
+          "arguments": "$ticket_id = 0",
+          "line": 170
+        },
+        {
+          "name": "customer_ppp_detail",
+          "arguments": "$customer_id = 0",
+          "line": 193
+        },
+        {
+          "name": "update_status",
+          "arguments": "",
+          "line": 281
+        },
+        {
+          "name": "mark_done",
+          "arguments": "$ticket_id = 0",
+          "line": 354
+        },
+        {
+          "name": "add_reply",
+          "arguments": "$ticket_id = 0",
+          "line": 421
+        },
+        {
+          "name": "upload_attachment",
+          "arguments": "$ticket_id = 0",
+          "line": 461
+        },
+        {
+          "name": "delete",
+          "arguments": "$ticket_id = 0",
+          "line": 525
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Helpdesk_cron.php",
+      "class": "Helpdesk_cron",
+      "extends": "CI_Controller",
+      "methods": [
+        {
+          "name": "check_sla",
+          "arguments": "",
+          "line": 15
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Helpdesk_dashboard.php",
+      "class": "Helpdesk_dashboard",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 15
+        },
+        {
+          "name": "export_pdf",
+          "arguments": "",
+          "line": 23
+        },
+        {
+          "name": "export_excel",
+          "arguments": "",
+          "line": 53
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Helpdesk_report.php",
+      "class": "Helpdesk_report",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 15
+        },
+        {
+          "name": "export_pdf",
+          "arguments": "",
+          "line": 62
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Hotspot.php",
+      "class": "Hotspot",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 18
+        },
+        {
+          "name": "add_user",
+          "arguments": "",
+          "line": 125
+        },
+        {
+          "name": "generate_users",
+          "arguments": "",
+          "line": 190
+        },
+        {
+          "name": "add_profile",
+          "arguments": "",
+          "line": 294
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Ip_pools.php",
+      "class": "Ip_pools",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 17
+        },
+        {
+          "name": "create",
+          "arguments": "",
+          "line": 35
+        },
+        {
+          "name": "sync_from_router",
+          "arguments": "",
+          "line": 40
+        },
+        {
+          "name": "refresh_usage",
+          "arguments": "",
+          "line": 198
+        },
+        {
+          "name": "store",
+          "arguments": "",
+          "line": 300
+        },
+        {
+          "name": "edit",
+          "arguments": "$id = null",
+          "line": 345
+        },
+        {
+          "name": "update",
+          "arguments": "$id = null",
+          "line": 357
+        },
+        {
+          "name": "delete",
+          "arguments": "$id = null",
+          "line": 418
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Manual_isolir.php",
+      "class": "Manual_isolir",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 17
+        },
+        {
+          "name": "popup",
+          "arguments": "",
+          "line": 31
+        },
+        {
+          "name": "suggest_user",
+          "arguments": "",
+          "line": 45
+        },
+        {
+          "name": "isolate_user",
+          "arguments": "",
+          "line": 64
+        },
+        {
+          "name": "release_user",
+          "arguments": "",
+          "line": 195
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Master_references.php",
+      "class": "Master_references",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 20
+        },
+        {
+          "name": "locations",
+          "arguments": "",
+          "line": 25
+        },
+        {
+          "name": "store_location",
+          "arguments": "",
+          "line": 46
+        },
+        {
+          "name": "update_location",
+          "arguments": "$id = 0",
+          "line": 82
+        },
+        {
+          "name": "delete_location",
+          "arguments": "$id = 0",
+          "line": 114
+        },
+        {
+          "name": "bulk_update_locations",
+          "arguments": "",
+          "line": 139
+        },
+        {
+          "name": "bulk_delete_locations",
+          "arguments": "",
+          "line": 169
+        },
+        {
+          "name": "olts",
+          "arguments": "",
+          "line": 196
+        },
+        {
+          "name": "store_olt",
+          "arguments": "",
+          "line": 217
+        },
+        {
+          "name": "update_olt",
+          "arguments": "$id = 0",
+          "line": 253
+        },
+        {
+          "name": "delete_olt",
+          "arguments": "$id = 0",
+          "line": 285
+        },
+        {
+          "name": "bulk_update_olts",
+          "arguments": "",
+          "line": 310
+        },
+        {
+          "name": "bulk_delete_olts",
+          "arguments": "",
+          "line": 340
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Migrate.php",
+      "class": "Migrate",
+      "extends": "CI_Controller",
+      "methods": [
+        {
+          "name": "latest",
+          "arguments": "",
+          "line": 24
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Monitoring.php",
+      "class": "Monitoring",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 18
+        },
+        {
+          "name": "snapshot_json",
+          "arguments": "",
+          "line": 70
+        },
+        {
+          "name": "check_now",
+          "arguments": "",
+          "line": 94
+        },
+        {
+          "name": "save_interface_config",
+          "arguments": "",
+          "line": 108
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/NetworkMap.php",
+      "class": "NetworkMap",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 17
+        },
+        {
+          "name": "nodes",
+          "arguments": "",
+          "line": 30
+        },
+        {
+          "name": "get_map_data",
+          "arguments": "",
+          "line": 48
+        },
+        {
+          "name": "get_router_list",
+          "arguments": "",
+          "line": 79
+        },
+        {
+          "name": "create_router",
+          "arguments": "",
+          "line": 98
+        },
+        {
+          "name": "update_router",
+          "arguments": "",
+          "line": 172
+        },
+        {
+          "name": "delete_router",
+          "arguments": "",
+          "line": 276
+        },
+        {
+          "name": "create_olt",
+          "arguments": "",
+          "line": 321
+        },
+        {
+          "name": "update_olt",
+          "arguments": "",
+          "line": 359
+        },
+        {
+          "name": "delete_olt",
+          "arguments": "",
+          "line": 398
+        },
+        {
+          "name": "create_odc",
+          "arguments": "",
+          "line": 427
+        },
+        {
+          "name": "update_odc",
+          "arguments": "",
+          "line": 468
+        },
+        {
+          "name": "delete_odc",
+          "arguments": "",
+          "line": 510
+        },
+        {
+          "name": "create_odp",
+          "arguments": "",
+          "line": 542
+        },
+        {
+          "name": "update_odp",
+          "arguments": "",
+          "line": 580
+        },
+        {
+          "name": "delete_odp",
+          "arguments": "",
+          "line": 611
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Notification.php",
+      "class": "Notification",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "latest",
+          "arguments": "",
+          "line": 15
+        },
+        {
+          "name": "unread_count",
+          "arguments": "",
+          "line": 57
+        },
+        {
+          "name": "mark_read",
+          "arguments": "$id = 0",
+          "line": 73
+        },
+        {
+          "name": "mark_all_read",
+          "arguments": "",
+          "line": 102
+        },
+        {
+          "name": "auth",
+          "arguments": "",
+          "line": 126
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Ont.php",
+      "class": "Ont",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "$router_id = null",
+          "line": 22
+        },
+        {
+          "name": "online",
+          "arguments": "$router_id = null",
+          "line": 59
+        },
+        {
+          "name": "offline",
+          "arguments": "$router_id = null",
+          "line": 65
+        },
+        {
+          "name": "detail",
+          "arguments": "$serial = ''",
+          "line": 71
+        },
+        {
+          "name": "reboot",
+          "arguments": "$serial = ''",
+          "line": 116
+        },
+        {
+          "name": "set_wifi",
+          "arguments": "",
+          "line": 157
+        },
+        {
+          "name": "sync",
+          "arguments": "$router_id = null",
+          "line": 204
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Ont_remote.php",
+      "class": "Ont_remote",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 21
+        },
+        {
+          "name": "detail",
+          "arguments": "",
+          "line": 31
+        },
+        {
+          "name": "set_wifi",
+          "arguments": "",
+          "line": 64
+        },
+        {
+          "name": "reboot",
+          "arguments": "",
+          "line": 115
+        },
+        {
+          "name": "connected_devices",
+          "arguments": "",
+          "line": 155
+        },
+        {
+          "name": "summary",
+          "arguments": "",
+          "line": 195
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Ppp_profiles.php",
+      "class": "Ppp_profiles",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 25
+        },
+        {
+          "name": "create",
+          "arguments": "",
+          "line": 43
+        },
+        {
+          "name": "sync_from_router",
+          "arguments": "",
+          "line": 49
+        },
+        {
+          "name": "store",
+          "arguments": "",
+          "line": 262
+        },
+        {
+          "name": "edit",
+          "arguments": "$id = null",
+          "line": 308
+        },
+        {
+          "name": "update",
+          "arguments": "$id = null",
+          "line": 322
+        },
+        {
+          "name": "delete",
+          "arguments": "$id = null",
+          "line": 397
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Provisioning.php",
+      "class": "Provisioning",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "store",
+          "arguments": "",
+          "line": 26
+        },
+        {
+          "name": "generate_username",
+          "arguments": "$full_name",
+          "line": 263
+        },
+        {
+          "name": "generate_password",
+          "arguments": "$length = 8",
+          "line": 282
+        },
+        {
+          "name": "assign_technician",
+          "arguments": "",
+          "line": 296
+        },
+        {
+          "name": "send_telegram_with_button",
+          "arguments": "array $technician, array $customer",
+          "line": 308
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Routeracs.php",
+      "class": "Routeracs",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 16
+        },
+        {
+          "name": "edit",
+          "arguments": "$id = null",
+          "line": 38
+        },
+        {
+          "name": "update",
+          "arguments": "$id = null",
+          "line": 53
+        },
+        {
+          "name": "test_connection",
+          "arguments": "$id = null",
+          "line": 91
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Routers.php",
+      "class": "Routers",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 16
+        },
+        {
+          "name": "create",
+          "arguments": "",
+          "line": 45
+        },
+        {
+          "name": "store",
+          "arguments": "",
+          "line": 51
+        },
+        {
+          "name": "edit",
+          "arguments": "$id = null",
+          "line": 94
+        },
+        {
+          "name": "update",
+          "arguments": "$id = null",
+          "line": 107
+        },
+        {
+          "name": "delete",
+          "arguments": "$id = null",
+          "line": 152
+        },
+        {
+          "name": "test_connection",
+          "arguments": "$id = null",
+          "line": 185
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/SaasCron.php",
+      "class": "SaasCron",
+      "extends": "CI_Controller",
+      "methods": [
+        {
+          "name": "checkSubscriptionStatus",
+          "arguments": "",
+          "line": 17
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Settings.php",
+      "class": "Settings",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 36
+        },
+        {
+          "name": "mikrotik",
+          "arguments": "",
+          "line": 41
+        },
+        {
+          "name": "save_mikrotik",
+          "arguments": "",
+          "line": 49
+        },
+        {
+          "name": "test_mikrotik",
+          "arguments": "",
+          "line": 81
+        },
+        {
+          "name": "database",
+          "arguments": "",
+          "line": 113
+        },
+        {
+          "name": "save_database",
+          "arguments": "",
+          "line": 121
+        },
+        {
+          "name": "test_database",
+          "arguments": "",
+          "line": 152
+        },
+        {
+          "name": "telegram",
+          "arguments": "",
+          "line": 178
+        },
+        {
+          "name": "save_telegram",
+          "arguments": "",
+          "line": 213
+        },
+        {
+          "name": "save_telegram_bot",
+          "arguments": "",
+          "line": 244
+        },
+        {
+          "name": "delete_telegram_bot",
+          "arguments": "$id = 0",
+          "line": 272
+        },
+        {
+          "name": "save_telegram_group",
+          "arguments": "",
+          "line": 283
+        },
+        {
+          "name": "delete_telegram_group",
+          "arguments": "$id = 0",
+          "line": 313
+        },
+        {
+          "name": "test_telegram_dispatch",
+          "arguments": "",
+          "line": 329
+        },
+        {
+          "name": "test_telegram",
+          "arguments": "",
+          "line": 359
+        },
+        {
+          "name": "pppoe_sync",
+          "arguments": "",
+          "line": 384
+        },
+        {
+          "name": "save_pppoe_sync",
+          "arguments": "",
+          "line": 394
+        },
+        {
+          "name": "sync_pppoe_now",
+          "arguments": "$router_id = null",
+          "line": 420
+        },
+        {
+          "name": "migrate_ppp_secret",
+          "arguments": "",
+          "line": 425
+        },
+        {
+          "name": "sync_pppoe",
+          "arguments": "$router_id = null",
+          "line": 715
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Static_ip_sync.php",
+      "class": "Static_ip_sync",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 18
+        },
+        {
+          "name": "run_sync",
+          "arguments": "",
+          "line": 50
+        },
+        {
+          "name": "run_check_isolir",
+          "arguments": "",
+          "line": 82
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Static_packages.php",
+      "class": "Static_packages",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 13
+        },
+        {
+          "name": "edit",
+          "arguments": "$id = null",
+          "line": 18
+        },
+        {
+          "name": "update",
+          "arguments": "$id = null",
+          "line": 23
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Subscription.php",
+      "class": "Subscription",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "expired",
+          "arguments": "",
+          "line": 14
+        },
+        {
+          "name": "pay",
+          "arguments": "",
+          "line": 33
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/System_monitoring.php",
+      "class": "System_monitoring",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 16
+        },
+        {
+          "name": "status_json",
+          "arguments": "",
+          "line": 55
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Teknisi_dashboard.php",
+      "class": "Teknisi_dashboard",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 15
+        },
+        {
+          "name": "export_pdf",
+          "arguments": "",
+          "line": 72
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Telegram_webhook.php",
+      "class": "Telegram_webhook",
+      "extends": "CI_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 28
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Tenant_dashboard.php",
+      "class": "Tenant_dashboard",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 14
+        },
+        {
+          "name": "expired",
+          "arguments": "",
+          "line": 57
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Tickets.php",
+      "class": "Tickets",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 31
+        },
+        {
+          "name": "store",
+          "arguments": "",
+          "line": 105
+        },
+        {
+          "name": "mark_done",
+          "arguments": "$id = 0",
+          "line": 333
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/User_logs.php",
+      "class": "User_logs",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 16
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Users.php",
+      "class": "Users",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 17
+        },
+        {
+          "name": "create",
+          "arguments": "",
+          "line": 37
+        },
+        {
+          "name": "store",
+          "arguments": "",
+          "line": 42
+        },
+        {
+          "name": "edit",
+          "arguments": "$id = null",
+          "line": 87
+        },
+        {
+          "name": "update",
+          "arguments": "$id = null",
+          "line": 104
+        },
+        {
+          "name": "delete",
+          "arguments": "$id = null",
+          "line": 163
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Work_order.php",
+      "class": "Work_order",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "start",
+          "arguments": "",
+          "line": 22
+        },
+        {
+          "name": "done",
+          "arguments": "",
+          "line": 44
+        },
+        {
+          "name": "activate",
+          "arguments": "",
+          "line": 78
+        },
+        {
+          "name": "cancel",
+          "arguments": "",
+          "line": 107
+        },
+        {
+          "name": "detail",
+          "arguments": "$id = null",
+          "line": 129
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Worker.php",
+      "class": "Worker",
+      "extends": "CI_Controller",
+      "methods": [
+        {
+          "name": "run",
+          "arguments": "$mode = 'daemon', $max_jobs = 0",
+          "line": 38
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/Workorders.php",
+      "class": "Workorders",
+      "extends": "MY_Controller",
+      "methods": [
+        {
+          "name": "index",
+          "arguments": "",
+          "line": 33
+        },
+        {
+          "name": "store",
+          "arguments": "",
+          "line": 91
+        },
+        {
+          "name": "mark_done",
+          "arguments": "$id = 0",
+          "line": 266
+        },
+        {
+          "name": "delete",
+          "arguments": "$id = 0",
+          "line": 353
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/api/Ont.php",
+      "class": "Ont",
+      "extends": "CI_Controller",
+      "methods": [
+        {
+          "name": "set_wifi",
+          "arguments": "",
+          "line": 17
+        },
+        {
+          "name": "reboot",
+          "arguments": "",
+          "line": 54
+        },
+        {
+          "name": "connected_devices",
+          "arguments": "",
+          "line": 82
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/cron/Billing_cron.php",
+      "class": "Billing_cron",
+      "extends": "CI_Controller",
+      "methods": [
+        {
+          "name": "generate_invoice",
+          "arguments": "",
+          "line": 15
+        },
+        {
+          "name": "auto_suspend",
+          "arguments": "",
+          "line": 87
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/cron/Invoice_cron.php",
+      "class": "Invoice_cron",
+      "extends": "CI_Controller",
+      "methods": [
+        {
+          "name": "generate",
+          "arguments": "",
+          "line": 32
+        },
+        {
+          "name": "check_overdue",
+          "arguments": "",
+          "line": 82
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/cron/Monitoring_cron.php",
+      "class": "Monitoring_cron",
+      "extends": "CI_Controller",
+      "methods": [
+        {
+          "name": "check_health",
+          "arguments": "",
+          "line": 18
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/cron/Offline_collection_cron.php",
+      "class": "Offline_collection_cron",
+      "extends": "CI_Controller",
+      "methods": [
+        {
+          "name": "run",
+          "arguments": "",
+          "line": 17
+        },
+        {
+          "name": "preview",
+          "arguments": "$date = null",
+          "line": 32
+        }
+      ]
+    },
+    {
+      "path": "application/controllers/cron/Static_ip_cron.php",
+      "class": "Static_ip_cron",
+      "extends": "CI_Controller",
+      "methods": [
+        {
+          "name": "sync_static_ip_arp",
+          "arguments": "$router_id = null",
+          "line": 15
+        },
+        {
+          "name": "check_static_isolir",
+          "arguments": "$router_id = null",
+          "line": 72
+        }
+      ]
+    }
+  ],
+  "migrations": [
+    "application/migrations/20260223091500_multitenant_foundation.php",
+    "application/migrations/20260223100500_saas_subscription_engine.php",
+    "application/migrations/20260223113500_saas_enforcement_lock.php",
+    "application/migrations/20260223122000_async_job_queue.php",
+    "application/migrations/20260224123000_multirouter_multitelegram_single_install.php",
+    "application/migrations/20260224150000_multiclient_lite_foundation.php",
+    "application/migrations/20260227170000_realtime_notifications_pusher.php",
+    "application/migrations/20260301155000_genieacs_ont_devices.php",
+    "application/migrations/20260301190000_router_acs_status.php",
+    "application/migrations/20260302003000_ont_devices_extra_fields.php",
+    "application/migrations/20260308110000_customer_upgrade_feature.php",
+    "application/migrations/20260308194000_fiber_network_map_module.php",
+    "application/migrations/20260309113000_fiber_network_map_odc_router_geo.php",
+    "application/migrations/20260511120000_whatsapp_message_logs.php",
+    "application/migrations/20260511133000_static_ip_sync_customer_columns.php",
+    "application/migrations/20260531130000_user_multi_router_access.php",
+    "application/migrations/20260607120000_customer_due_date_day.php",
+    "application/migrations/20261022120000_customer_billing_cycles_offline_collection.php"
+  ],
+  "composer_production_packages": [
+    {
+      "name": "dompdf/dompdf",
+      "version": "v3.1.4",
+      "php": "^7.1 || ^8.0"
+    },
+    {
+      "name": "dompdf/php-font-lib",
+      "version": "1.0.2",
+      "php": "^7.1 || ^8.0"
+    },
+    {
+      "name": "dompdf/php-svg-lib",
+      "version": "1.0.2",
+      "php": "^7.1 || ^8.0"
+    },
+    {
+      "name": "guzzlehttp/guzzle",
+      "version": "7.10.0",
+      "php": "^7.2.5 || ^8.0"
+    },
+    {
+      "name": "guzzlehttp/promises",
+      "version": "2.3.0",
+      "php": "^7.2.5 || ^8.0"
+    },
+    {
+      "name": "guzzlehttp/psr7",
+      "version": "2.8.0",
+      "php": "^7.2.5 || ^8.0"
+    },
+    {
+      "name": "masterminds/html5",
+      "version": "2.10.0",
+      "php": ">=5.3.0"
+    },
+    {
+      "name": "paragonie/random_compat",
+      "version": "v9.99.100",
+      "php": ">= 7"
+    },
+    {
+      "name": "paragonie/sodium_compat",
+      "version": "v1.24.0",
+      "php": "^5.2.4|^5.3|^5.4|^5.5|^5.6|^7|^8"
+    },
+    {
+      "name": "predis/predis",
+      "version": "v2.4.1",
+      "php": "^7.2 || ^8.0"
+    },
+    {
+      "name": "psr/http-client",
+      "version": "1.0.3",
+      "php": "^7.0 || ^8.0"
+    },
+    {
+      "name": "psr/http-factory",
+      "version": "1.1.0",
+      "php": ">=7.1"
+    },
+    {
+      "name": "psr/http-message",
+      "version": "2.0",
+      "php": "^7.2 || ^8.0"
+    },
+    {
+      "name": "psr/log",
+      "version": "1.1.4",
+      "php": ">=5.3.0"
+    },
+    {
+      "name": "pusher/pusher-php-server",
+      "version": "7.2.7",
+      "php": "^7.3|^8.0"
+    },
+    {
+      "name": "ralouphie/getallheaders",
+      "version": "3.0.3",
+      "php": ">=5.6"
+    },
+    {
+      "name": "sabberworm/php-css-parser",
+      "version": "v9.2.0",
+      "php": "^7.2.0 || ~8.0.0 || ~8.1.0 || ~8.2.0 || ~8.3.0 || ~8.4.0 || ~8.5.0"
+    },
+    {
+      "name": "symfony/deprecation-contracts",
+      "version": "v2.5.4",
+      "php": ">=7.1"
+    },
+    {
+      "name": "thecodingmachine/safe",
+      "version": "v1.3.3",
+      "php": ">=7.2"
+    }
+  ],
+  "environment_variable_references": {
+    "APP_BRAND_COMPANY": [
+      ".env.example"
+    ],
+    "APP_BRAND_NAME": [
+      ".env.example",
+      "application/config/config.php",
+      "application/config/telegram_automation.php"
+    ],
+    "APP_BRAND_TAGLINE": [
+      ".env.example"
+    ],
+    "APP_FORCE_HTTPS": [
+      ".env.example",
+      "application/config/config.php"
+    ],
+    "APP_KEY": [
+      "application/config/config.php",
+      "application/models/Settings_model.php"
+    ],
+    "APP_LOG_THRESHOLD": [
+      ".env.example",
+      "application/config/config.php"
+    ],
+    "APP_SECRET_KEY": [
+      "application/models/Settings_model.php"
+    ],
+    "APP_TRUSTED_PROXIES": [
+      ".env.example",
+      "application/config/config.php"
+    ],
+    "AUTH_LOGIN_LOCK_SECONDS": [
+      ".env.example",
+      "application/config/config.php"
+    ],
+    "AUTH_LOGIN_MAX_ATTEMPTS": [
+      ".env.example",
+      "application/config/config.php"
+    ],
+    "AUTH_LOGIN_WINDOW_SECONDS": [
+      ".env.example",
+      "application/config/config.php"
+    ],
+    "AUTH_SESSION_IDLE_TIMEOUT": [
+      ".env.example",
+      "application/config/config.php"
+    ],
+    "BILLING_APPLY_MIKROTIK_ON_MARK_PAID": [
+      ".env.example",
+      "application/libraries/Billing_automation_service.php"
+    ],
+    "CI_ENCRYPTION_KEY": [
+      ".env.example",
+      "application/config/config.php",
+      "application/models/Settings_model.php"
+    ],
+    "CI_ENV": [
+      ".env.example"
+    ],
+    "COMPANY_ADDRESS": [
+      ".env.example"
+    ],
+    "COMPANY_EMAIL": [
+      ".env.example"
+    ],
+    "COMPANY_NAME": [
+      ".env.example"
+    ],
+    "COMPANY_PHONE": [
+      ".env.example"
+    ],
+    "COMPANY_TAGLINE": [
+      ".env.example"
+    ],
+    "COMPANY_WEBSITE": [
+      ".env.example"
+    ],
+    "CRON_NOTIFICATION_KEY": [
+      ".env.example",
+      "application/controllers/CronNotification.php"
+    ],
+    "CRON_TOKEN": [
+      ".env.example",
+      "application/config/cron.php",
+      "application/controllers/SaasCron.php",
+      "application/controllers/cron/Billing_cron.php",
+      "application/controllers/cron/Static_ip_cron.php"
+    ],
+    "DB_HOST": [
+      ".env.example"
+    ],
+    "DB_NAME": [
+      ".env.example"
+    ],
+    "DB_PASS": [
+      ".env.example"
+    ],
+    "DB_PORT": [
+      ".env.example"
+    ],
+    "DB_USER": [
+      ".env.example"
+    ],
+    "FREEACS_HTTP_PASS": [
+      ".env.example",
+      "application/config/tr069.php"
+    ],
+    "FREEACS_HTTP_USER": [
+      ".env.example",
+      "application/config/tr069.php"
+    ],
+    "FREEACS_MODE": [
+      ".env.example",
+      "application/config/tr069.php"
+    ],
+    "FREEACS_REST_BASE_URL": [
+      ".env.example",
+      "application/config/tr069.php"
+    ],
+    "FREEACS_REST_TOKEN": [
+      ".env.example",
+      "application/config/tr069.php"
+    ],
+    "FREEACS_SOAP_LOGIN_PASS": [
+      ".env.example",
+      "application/config/tr069.php"
+    ],
+    "FREEACS_SOAP_LOGIN_USER": [
+      ".env.example",
+      "application/config/tr069.php"
+    ],
+    "FREEACS_SOAP_URL": [
+      ".env.example",
+      "application/config/tr069.php"
+    ],
+    "FREEACS_TIMEOUT": [
+      ".env.example",
+      "application/config/tr069.php"
+    ],
+    "FREEACS_VERIFY_SSL": [
+      ".env.example",
+      "application/config/tr069.php"
+    ],
+    "GENIEACS_CONNECTION_REQUEST_ONLINE_CHECK": [
+      "application/config/genieacs.php"
+    ],
+    "GENIEACS_SYNC_REFRESH_VIRTUAL_PARAMETERS": [
+      "application/config/genieacs.php"
+    ],
+    "GENIEACS_TASK_CONNECTION_REQUEST": [
+      ".env.example",
+      "application/config/genieacs.php"
+    ],
+    "GENIEACS_TIMEOUT": [
+      ".env.example",
+      "application/config/genieacs.php"
+    ],
+    "GENIEACS_VERIFY_SSL": [
+      ".env.example",
+      "application/config/genieacs.php"
+    ],
+    "GENIEACS_VPARAM_BASE_DIR": [
+      ".env.example",
+      "application/config/genieacs.php"
+    ],
+    "GENIEACS_VPARAM_JSON_ARRAY_PATH": [
+      ".env.example",
+      "application/config/genieacs.php"
+    ],
+    "GENIEACS_VPARAM_MANIFEST_PATH": [
+      ".env.example",
+      "application/config/genieacs.php"
+    ],
+    "GENIEACS_VPARAM_MONGO_DB": [
+      ".env.example",
+      "application/config/genieacs.php"
+    ],
+    "GENIEACS_VPARAM_NDJSON_PATH": [
+      ".env.example",
+      "application/config/genieacs.php"
+    ],
+    "GENIEACS_VPARAM_SOURCE": [
+      ".env.example",
+      "application/config/genieacs.php"
+    ],
+    "GENIEACS_VPARAM_SYNC_ENABLED": [
+      ".env.example",
+      "application/config/genieacs.php"
+    ],
+    "MIKROTIK_HOST": [
+      ".env.example"
+    ],
+    "MIKROTIK_ISOLIR_LIST": [
+      ".env.example",
+      "application/libraries/Billing_automation_service.php",
+      "application/libraries/MikrotikManager.php"
+    ],
+    "MIKROTIK_PASS": [
+      ".env.example"
+    ],
+    "MIKROTIK_PORT": [
+      ".env.example"
+    ],
+    "MIKROTIK_RETRY_DELAY": [
+      ".env.example"
+    ],
+    "MIKROTIK_RETRY_MAX": [
+      ".env.example"
+    ],
+    "MIKROTIK_SSL": [
+      ".env.example"
+    ],
+    "MIKROTIK_TIMEOUT": [
+      ".env.example"
+    ],
+    "MIKROTIK_USER": [
+      ".env.example"
+    ],
+    "MONITORING_CRON_TOKEN": [
+      ".env.example",
+      "application/config/monitoring.php"
+    ],
+    "PROVISIONING_CALLBACK_SECRET": [
+      ".env.example",
+      "application/controllers/Customers.php",
+      "application/controllers/Provisioning.php",
+      "application/controllers/Telegram_webhook.php"
+    ],
+    "PUSHER_APP_ID": [
+      ".env.example",
+      "application/config/pusher.php"
+    ],
+    "PUSHER_CHANNEL_PRIVATE_PREFIX": [
+      ".env.example",
+      "application/config/pusher.php"
+    ],
+    "PUSHER_CHANNEL_PUBLIC": [
+      ".env.example",
+      "application/config/pusher.php"
+    ],
+    "PUSHER_CLUSTER": [
+      ".env.example",
+      "application/config/pusher.php"
+    ],
+    "PUSHER_EVENT_NEW_NOTIFICATION": [
+      ".env.example",
+      "application/config/pusher.php"
+    ],
+    "PUSHER_KEY": [
+      ".env.example",
+      "application/config/pusher.php"
+    ],
+    "PUSHER_SECRET": [
+      ".env.example",
+      "application/config/pusher.php"
+    ],
+    "PUSHER_USE_TLS": [
+      ".env.example",
+      "application/config/pusher.php"
+    ],
+    "QUEUE_BACKOFF_BASE_SECONDS": [
+      ".env.example",
+      "application/config/queue.php"
+    ],
+    "QUEUE_BACKOFF_MAX_SECONDS": [
+      ".env.example",
+      "application/config/queue.php"
+    ],
+    "QUEUE_DEFAULT_MAX_ATTEMPTS": [
+      ".env.example",
+      "application/config/queue.php"
+    ],
+    "QUEUE_DRIVER": [
+      ".env.example",
+      "application/config/queue.php"
+    ],
+    "QUEUE_ENABLE_ASYNC": [
+      ".env.example",
+      "application/config/queue.php"
+    ],
+    "QUEUE_NAME": [
+      ".env.example",
+      "application/config/queue.php"
+    ],
+    "QUEUE_POLL_SLEEP_SECONDS": [
+      ".env.example",
+      "application/config/queue.php"
+    ],
+    "QUEUE_POP_TIMEOUT_SECONDS": [
+      ".env.example",
+      "application/config/queue.php"
+    ],
+    "QUEUE_WORKER_MEMORY_LIMIT_MB": [
+      ".env.example",
+      "application/config/queue.php"
+    ],
+    "REDIS_DB": [
+      ".env.example",
+      "application/config/queue.php"
+    ],
+    "REDIS_HOST": [
+      ".env.example",
+      "application/config/queue.php"
+    ],
+    "REDIS_PASSWORD": [
+      ".env.example",
+      "application/config/queue.php"
+    ],
+    "REDIS_PORT": [
+      ".env.example",
+      "application/config/queue.php"
+    ],
+    "REDIS_PREFIX": [
+      ".env.example",
+      "application/config/queue.php"
+    ],
+    "REDIS_TIMEOUT": [
+      ".env.example",
+      "application/config/queue.php"
+    ],
+    "STATIC_IP_SYNC_CIDR": [
+      "application/models/Static_ip_sync_model.php"
+    ],
+    "TELEGRAM_BOT_TOKEN": [
+      ".env.example",
+      "application/config/telegram_automation.php"
+    ],
+    "TELEGRAM_WEBHOOK_SECRET": [
+      ".env.example",
+      "application/config/telegram_automation.php",
+      "application/controllers/Telegram_webhook.php"
+    ],
+    "TR069_API_BASIC_ENABLED": [
+      ".env.example",
+      "application/config/tr069.php"
+    ],
+    "TR069_API_BASIC_PASS": [
+      ".env.example",
+      "application/config/tr069.php"
+    ],
+    "TR069_API_BASIC_USER": [
+      ".env.example",
+      "application/config/tr069.php"
+    ],
+    "TR069_API_TOKEN": [
+      ".env.example",
+      "application/config/tr069.php"
+    ],
+    "TR069_TASK_RATE_LIMIT_SECONDS": [
+      ".env.example",
+      "application/config/tr069.php"
+    ],
+    "WA_API_TOKEN": [
+      "application/config/whatsapp.php"
+    ],
+    "WA_API_URL": [
+      "application/config/whatsapp.php"
+    ],
+    "WA_CONNECT_TIMEOUT_SECONDS": [
+      "application/config/whatsapp.php"
+    ],
+    "WA_CRON_SECRET": [
+      "application/config/whatsapp.php"
+    ],
+    "WA_DELAY_SECONDS": [
+      "application/config/whatsapp.php"
+    ],
+    "WA_MAX_RETRY": [
+      "application/config/whatsapp.php"
+    ],
+    "WA_PAYMENT_INFO": [
+      "application/config/whatsapp.php"
+    ],
+    "WA_PROCESSING_TIMEOUT_MINUTES": [
+      "application/config/whatsapp.php"
+    ],
+    "WA_PROVIDER": [
+      "application/config/whatsapp.php"
+    ],
+    "WA_QUEUE_LIMIT": [
+      "application/config/whatsapp.php"
+    ],
+    "WA_REMINDER_LIMIT": [
+      "application/config/whatsapp.php"
+    ],
+    "WA_SENDER": [
+      "application/config/whatsapp.php"
+    ],
+    "WA_TIMEOUT_SECONDS": [
+      "application/config/whatsapp.php"
+    ],
+    "WA_TOKEN_HEADER": [
+      "application/config/whatsapp.php"
+    ],
+    "WA_TOKEN_PREFIX": [
+      "application/config/whatsapp.php"
+    ]
+  }
+}
