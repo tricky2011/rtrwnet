@@ -822,7 +822,16 @@ class Billing extends MY_Controller
             return;
         }
 
-        $result = $this->billing_automation_service->record_payment($id, $remaining, 'cash', date('Y-m-d H:i:s'));
+        $method = trim((string) $this->input->post('method', true));
+        if ($method === '') {
+            $method = 'cash';
+        }
+        if (!in_array($method, array('cash', 'bank_transfer'), true)) {
+            $this->session->set_flashdata('error', 'Metode pembayaran tidak valid.');
+            redirect($this->billing_return_url());
+            return;
+        }
+        $result = $this->billing_automation_service->record_payment($id, $remaining, $method, date('Y-m-d H:i:s'));
         if (!empty($result['success'])) {
             $this->session->set_flashdata('success', (string) ($result['message'] ?? 'Invoice berhasil ditandai lunas.'));
             $this->push_billing_notification(

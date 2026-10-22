@@ -138,4 +138,4 @@ ob_start();
 </div>
 <?php
 $content = ob_get_clean();
-include APPPATH . 'views/layouts/master.php';
+include APPPATH . 'views/layout/master.php';

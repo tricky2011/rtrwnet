@@ -15,6 +15,7 @@ class Billing_automation_service
         $this->CI->load->library('MikrotikManager');
         $this->CI->load->helper('wa_template');
         $this->CI->load->library('Whatsapp_service');
+        $this->CI->load->library('billing_cycle');
         $this->CI->load->model('Whatsapp_log_model', 'whatsapp_log_model');
 
         $list_name = getenv('MIKROTIK_ISOLIR_LIST');
@@ -139,6 +140,24 @@ class Billing_automation_service
             }
 
             $resolved_install_date = $this->resolve_install_date_for_customer($customer);
+            try {
+                $cycle = $this->CI->billing_cycle->resolve($customer, $period_ym);
+            } catch (InvalidArgumentException $e) {
+                $stats['total_failed']++;
+                $stats['router_summary'][$router_key]['total_failed']++;
+                $stats['errors'][] = array('customer_id' => $customer_id, 'message' => $e->getMessage());
+                if ($stats['first_error_message'] === '') {
+                    $stats['first_error_message'] = $e->getMessage();
+                }
+                continue;
+            }
+            if ($cycle === null) {
+                $stats['total_skipped_not_cycle']++;
+                $stats['router_summary'][$router_key]['total_skipped_not_cycle']++;
+                continue;
+            }
+            $period_start = $cycle['start'];
+            $period_end = $cycle['end'];
             $cycle_day = $this->resolve_cycle_day_for_customer($customer, $resolved_install_date);
             $due_date = $this->calculate_due_date_from_cycle_day($cycle_day, $period_start);
 
@@ -153,13 +172,14 @@ class Billing_automation_service
             $stats['total_due_target']++;
             $stats['router_summary'][$router_key]['total_due_target']++;
 
-            if ($this->CI->billing_automation_model->invoice_exists_for_exact_period($customer_id, $period_start, $period_end)) {
+            if ($this->CI->billing_automation_model->invoice_overlaps_period($customer_id, $period_start, $period_end)) {
                 $stats['total_skipped_duplicate']++;
                 $stats['router_summary'][$router_key]['total_skipped_duplicate']++;
                 continue;
             }
 
-            $price = $this->resolve_customer_price($customer);
+            $monthly_price = $this->resolve_customer_price($customer);
+            $price = round($monthly_price * $cycle['months'], 2);
             $tax_amount = 0.0;
             $discount_amount = 0.0;
             $total_amount = round($price + $tax_amount - $discount_amount, 2);
@@ -182,7 +202,7 @@ class Billing_automation_service
                 'paid_amount' => 0,
                 'balance_amount' => $total_amount,
                 'status' => 'issued',
-                'notes' => 'Auto rolling invoice. due_day=' . $cycle_day . '; install_date=' . ($resolved_install_date !== '' ? $resolved_install_date : 'unknown'),
+                'notes' => 'Auto rolling invoice. months=' . $cycle['months'] . '; monthly_price=' . $monthly_price . '; due_day=' . $cycle_day . '; install_date=' . ($resolved_install_date !== '' ? $resolved_install_date : 'unknown'),
                 'created_at' => $now,
                 'updated_at' => $now,
             );

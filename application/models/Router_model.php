@@ -5,6 +5,7 @@ class Router_model extends CI_Model
 {
     private $table = 'routers';
     private $fields_cache = null;
+    private $delete_error = '';
 
     public function __construct()
     {
@@ -208,18 +209,49 @@ class Router_model extends CI_Model
 
     public function delete_by_role($id, $role)
     {
+        $this->delete_error = '';
         if (!$this->table_exists()) {
+            $this->delete_error = 'Tabel router belum tersedia.';
             return false;
         }
 
         $id = (int) $id;
         if ($id <= 0) {
+            $this->delete_error = 'ID router tidak valid.';
             return false;
         }
 
         $role = strtolower(trim((string) $role));
         if ($role === 'superadmin') {
-            return $this->db->where('id', $id)->delete($this->table);
+            $usage = $this->get_router_usage($id);
+            if (!empty($usage)) {
+                $details = array();
+                foreach (array_slice($usage, 0, 4) as $item) {
+                    $details[] = number_format($item['count'], 0, ',', '.') . ' ' . $item['label'];
+                }
+                $this->delete_error = 'Router tidak dapat dihapus karena masih digunakan: '
+                    . implode(', ', $details)
+                    . (count($usage) > 4 ? ', serta data terkait lainnya' : '')
+                    . '. Nonaktifkan melalui Edit jika router tidak digunakan lagi, atau pindahkan/hapus data terkait terlebih dahulu.';
+                return false;
+            }
+
+            // Keep a concurrent reference insert from turning this into a database error page.
+            $db_debug = $this->db->db_debug;
+            $this->db->db_debug = false;
+            try {
+                $ok = $this->db->where('id', $id)->delete($this->table);
+                $error = $this->db->error();
+            } finally {
+                $this->db->db_debug = $db_debug;
+            }
+            if (!$ok) {
+                log_message('error', '[ROUTER_MODEL][DELETE] id=' . $id . ' ' . json_encode($error));
+                $this->delete_error = (int) ($error['code'] ?? 0) === 1451
+                    ? 'Router masih digunakan oleh data terkait. Nonaktifkan melalui Edit atau pindahkan data terkait terlebih dahulu.'
+                    : 'Gagal menghapus router. Silakan coba lagi atau periksa log server.';
+            }
+            return $ok;
         }
 
         $data = array();
@@ -238,6 +270,49 @@ class Router_model extends CI_Model
         }
 
         return $this->db->where('id', $id)->update($this->table, $data);
+    }
+
+    public function get_delete_error()
+    {
+        return $this->delete_error;
+    }
+
+    public function get_router_usage($id)
+    {
+        // Include scoped tables without foreign keys so deleting a router cannot orphan their data.
+        $tables = array(
+            'customers' => 'pelanggan',
+            'customer_services' => 'layanan pelanggan',
+            'invoices' => 'invoice',
+            'payments' => 'pembayaran',
+            'invoice_items' => 'item invoice',
+            'cashflow_transactions' => 'transaksi kas',
+            'work_orders' => 'work order',
+            'tickets' => 'tiket helpdesk',
+            'pppoe_secrets' => 'akun PPP',
+            'ppp_profiles' => 'profil PPP',
+            'ip_pools' => 'IP pool',
+            'service_plans' => 'paket layanan',
+            'master_locations' => 'lokasi',
+            'master_olts' => 'OLT',
+            'ont_devices' => 'perangkat ONT',
+            'fiber_odc' => 'ODC',
+            'fiber_odp' => 'ODP',
+            'telegram_bots' => 'bot Telegram',
+            'telegram_groups' => 'grup Telegram',
+        );
+        $usage = array();
+        foreach ($tables as $table => $label) {
+            if (!$this->db->table_exists($table)
+                || !in_array('router_id', $this->db->list_fields($table), true)) {
+                continue;
+            }
+            $count = (int) $this->db->where('router_id', (int) $id)->count_all_results($table);
+            if ($count > 0) {
+                $usage[] = array('table' => $table, 'label' => $label, 'count' => $count);
+            }
+        }
+        return $usage;
     }
 
     private function build_payload(array $input, array $existing = null)

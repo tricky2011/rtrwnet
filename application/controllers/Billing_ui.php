@@ -366,7 +366,7 @@ class Billing_ui extends MY_Controller
         if ($period !== '' && preg_match('/^\d{4}-\d{2}$/', $period)) {
             $period_start = $period . '-01';
             $period_end = date('Y-m-t', strtotime($period_start));
-            $qb->where('i.billing_period_start >=', $period_start)
+            $qb->where('i.billing_period_end >=', $period_start)
                 ->where('i.billing_period_start <=', $period_end);
         }
 

@@ -290,7 +290,16 @@ class Billing_automation_model extends CI_Model
 
         $period_start = $period_ym . '-01';
         $period_end = date('Y-m-t', strtotime($period_start));
-        return $this->invoice_exists_for_exact_period($customer_id, $period_start, $period_end);
+        return $this->invoice_overlaps_period($customer_id, $period_start, $period_end);
+    }
+
+    public function invoice_overlaps_period($customer_id, $period_start, $period_end)
+    {
+        return $this->db->from('invoices')
+            ->where('customer_id', (int) $customer_id)
+            ->where('billing_period_start <=', $period_end)
+            ->where('billing_period_end >=', $period_start)
+            ->where('status !=', 'void')->count_all_results() > 0;
     }
 
     public function invoice_exists_for_exact_period($customer_id, $period_start, $period_end)

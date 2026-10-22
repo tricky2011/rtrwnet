@@ -192,6 +192,9 @@ ob_start();
                         >
                     </div>
                     <?php endif; ?>
+                    <?php if ($has_field('billing_interval_months')): ?>
+                        <?php $this->load->view('customers/billing_preferences'); ?>
+                    <?php endif; ?>
                     <div class="col-md-3">
                         <label class="form-label">Latitude</label>
                         <input type="text" class="form-control" name="latitude" id="latitude" value="<?php echo html_escape(set_value('latitude')); ?>" placeholder="-6.9123">

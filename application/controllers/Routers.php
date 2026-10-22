@@ -167,8 +167,9 @@ class Routers extends MY_Controller
         $ok = $this->router_model->delete_by_role($id, $role);
         if (!$ok) {
             $err = $this->db->error();
-            log_message('error', '[ROUTERS][DELETE] gagal delete id ' . $id . ': ' . json_encode($err));
-            $this->session->set_flashdata('error', 'Gagal menghapus router.');
+            $message = $this->router_model->get_delete_error() ?: 'Gagal menghapus router.';
+            log_message('error', '[ROUTERS][DELETE] id=' . $id . ' ' . $message . ' DB=' . json_encode($err));
+            $this->session->set_flashdata('error', $message);
             return redirect('routers');
         }
 

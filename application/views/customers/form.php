@@ -253,6 +253,10 @@ ob_start();
             </div>
             <?php endif; ?>
 
+            <?php if ($has_field('billing_interval_months')): ?>
+                <?php $this->load->view('customers/billing_preferences', array('billing_customer' => $customer)); ?>
+            <?php endif; ?>
+
             <div class="col-md-6 pppoe-field">
                 <label class="form-label">Username PPP</label>
                 <input type="text" class="form-control" name="pppoe_username" id="pppoe_username" value="<?php echo html_escape($username_value); ?>" <?php echo $selected_service_mode === 'pppoe' ? 'required' : ''; ?>>

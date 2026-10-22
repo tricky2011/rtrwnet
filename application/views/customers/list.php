@@ -250,7 +250,17 @@ ob_start();
                                     <input type="checkbox" name="customer_ids[]" value="<?php echo $customer_id; ?>" class="form-check-input customer_checkbox">
                                 </td>
                             <?php endif; ?>
-                            <td class="ps-3"><?php echo html_escape($display_name); ?></td>
+                            <td class="ps-3">
+                                <?php echo html_escape($display_name); ?>
+                                <?php if ((int) ($row->billing_interval_months ?? 1) === 2): ?>
+                                    <div class="small text-primary">Tagihan setiap 2 bulan</div>
+                                <?php endif; ?>
+                                <?php if (($row->payment_collection_method ?? '') === 'cash_visit'): ?>
+                                    <div class="small text-warning">Cash · Kunjungan rumah</div>
+                                <?php elseif (($row->payment_collection_method ?? '') === 'transfer'): ?>
+                                    <div class="small text-muted">Transfer</div>
+                                <?php endif; ?>
+                            </td>
                             <td><?php echo html_escape($profile_label); ?></td>
                             <td><?php echo html_escape($technician_name); ?></td>
                             <td>

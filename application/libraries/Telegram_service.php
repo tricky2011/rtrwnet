@@ -16,48 +16,12 @@ class Telegram_service
             );
         }
 
-        $url = 'https://api.telegram.org/bot' . $bot_token . '/sendMessage';
-        $payload = array(
+        return $this->request($bot_token, 'sendMessage', array(
             'chat_id' => $chat_id,
             'text' => $message,
             'parse_mode' => $parse_mode,
             'disable_web_page_preview' => true,
-        );
-
-        $ch = curl_init();
-        curl_setopt_array($ch, array(
-            CURLOPT_URL => $url,
-            CURLOPT_POST => true,
-            CURLOPT_HTTPHEADER => array('Content-Type: application/json'),
-            CURLOPT_POSTFIELDS => json_encode($payload),
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 15,
-            CURLOPT_CONNECTTIMEOUT => 5,
         ));
-
-        $response = curl_exec($ch);
-        $curl_error = curl_error($ch);
-        $http_code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($curl_error) {
-            log_message('error', '[Telegram_service] cURL error: ' . $curl_error);
-            return array('success' => false, 'message' => 'cURL error: ' . $curl_error);
-        }
-
-        $decoded = json_decode((string) $response, true);
-        if (!is_array($decoded)) {
-            log_message('error', '[Telegram_service] Invalid JSON response: ' . $response);
-            return array('success' => false, 'message' => 'Response Telegram tidak valid.');
-        }
-
-        if ($http_code >= 200 && $http_code < 300 && !empty($decoded['ok'])) {
-            return array('success' => true, 'message' => 'Pesan test Telegram berhasil dikirim.');
-        }
-
-        $description = isset($decoded['description']) ? $decoded['description'] : 'Unknown Telegram error';
-        log_message('error', '[Telegram_service] API error: ' . $description);
-        return array('success' => false, 'message' => $description);
     }
 
     public function send_message_with_inline_keyboard($bot_token, $chat_id, $message, array $inline_keyboard, $parse_mode = 'HTML')
@@ -148,6 +112,11 @@ class Telegram_service
         ));
 
         $response = curl_exec($ch);
+        // DNS failures occur before delivery, so one retry cannot duplicate a message.
+        if (curl_errno($ch) === CURLE_COULDNT_RESOLVE_HOST) {
+            curl_setopt($ch, CURLOPT_DNS_CACHE_TIMEOUT, 0);
+            $response = curl_exec($ch);
+        }
         $curl_error = curl_error($ch);
         $http_code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);

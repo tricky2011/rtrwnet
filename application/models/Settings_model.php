@@ -610,7 +610,7 @@ class Settings_model extends CI_Model
         if ($bot_id <= 0) {
             return array('success' => false, 'message' => 'Pilih bot Telegram terlebih dahulu.');
         }
-        if (!in_array($type, array('teknisi', 'admin', 'owner', 'alert'), true)) {
+        if (!in_array($type, array('teknisi', 'admin', 'owner', 'alert', 'collection'), true)) {
             return array('success' => false, 'message' => 'Type Telegram group tidak valid.');
         }
 
@@ -854,6 +854,9 @@ class Settings_model extends CI_Model
     private function map_group_type_legacy($type)
     {
         $type = strtolower(trim((string) $type));
+        if ($type === 'collection') {
+            return 'collection';
+        }
         if ($type === 'teknisi') {
             return 'ops';
         }

@@ -24,7 +24,6 @@ $ticket_bulan_ini = (int) ($monthly_summary['ticket_bulan_ini'] ?? 0);
 $total_pendapatan_bulan_ini = (float) ($monthly_summary['total_pendapatan'] ?? 0);
 $total_pengeluaran_bulan_ini = (float) ($monthly_summary['total_pengeluaran'] ?? 0);
 $error_log_bulan_ini = (int) ($monthly_summary['error_log'] ?? 0);
-$ppp_active_bulan_ini = (int) ($monthly_summary['ppp_active'] ?? 0);
 $total_customer_router = (int) ($monthly_summary['total_customer_router'] ?? 0);
 
 $selected_router_name = trim((string) ($router_context['selected_router_name'] ?? 'Semua Router'));
@@ -52,7 +51,6 @@ $chart_revenue = isset($chart_series['revenue']) && is_array($chart_series['reve
 $chart_ppp = isset($chart_series['ppp_active']) && is_array($chart_series['ppp_active']) ? $chart_series['ppp_active'] : array();
 
 $active_ratio = $total_customer > 0 ? min(100, max(0, round(($active_customer / $total_customer) * 100))) : 0;
-$ppp_ratio = $total_customer > 0 ? min(100, max(0, round(($ppp_active_bulan_ini / $total_customer) * 100))) : 0;
 $static_ratio = $total_customer > 0 ? min(100, max(0, round(($static_customer / $total_customer) * 100))) : 0;
 $outstanding_ratio = $total_unpaid > 0 ? 100 : 0;
 
@@ -86,8 +84,9 @@ ob_start();
         <div class="premium-stat h-100">
             <div class="icon-wrap icon-gradient-success"><i class="ti ti-wifi"></i></div>
             <div class="label">PPP Active</div>
-            <div class="value js-countup skeleton" data-countup="<?php echo (int) $ppp_active_bulan_ini; ?>" data-format="number"><?php echo number_format($ppp_active_bulan_ini); ?></div>
-            <div class="mini-progress"><span style="width: <?php echo (int) $ppp_ratio; ?>%; background: linear-gradient(90deg,#16a34a,#4ade80);"></span></div>
+            <div id="dashboardPppActive" class="value" aria-live="polite">…</div>
+            <div id="dashboardPppStatus" class="small text-muted">Memuat data router…</div>
+            <div class="mini-progress"><span id="dashboardPppProgress" style="width: 0; background: linear-gradient(90deg,#16a34a,#4ade80);"></span></div>
         </div>
     </div>
     <div class="col-12 col-sm-6 col-xl-3">
@@ -188,6 +187,29 @@ $page_scripts = <<<'SCRIPT'
     const labels = %s;
     const revenueData = %s;
     const pppData = %s;
+    const pppUrl = %s;
+    const totalCustomers = %s;
+    const selectedRouterId = %s;
+    const pppValue = document.getElementById('dashboardPppActive');
+    const pppStatus = document.getElementById('dashboardPppStatus');
+    fetch(pppUrl, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+        .then(function (response) {
+            if (!response.ok) throw new Error('PPP request failed');
+            return response.json();
+        })
+        .then(function (data) {
+            if (Number(data.router_id || 0) !== selectedRouterId) throw new Error('Router scope changed');
+            pppValue.textContent = data.total === null ? '—' : Number(data.total).toLocaleString('id-ID');
+            pppStatus.textContent = data.unavailable_routers > 0
+                ? data.unavailable_routers + ' router belum terhubung'
+                : (data.total === null ? 'Router belum tersedia' : 'Data online router (cache maks. 60 detik)');
+            document.getElementById('dashboardPppProgress').style.width =
+                (totalCustomers > 0 && data.total !== null ? Math.min(100, data.total / totalCustomers * 100) : 0) + '%%';
+        })
+        .catch(function () {
+            pppValue.textContent = '—';
+            pppStatus.textContent = 'Data router belum tersedia. Muat ulang untuk mencoba lagi.';
+        });
 
     if (revenueCtx && typeof Chart !== 'undefined') {
         new Chart(revenueCtx, {
@@ -239,7 +261,10 @@ $page_scripts = sprintf(
     $page_scripts,
     json_encode(array_values($chart_labels)),
     json_encode(array_map('floatval', $chart_revenue)),
-    json_encode(array_map('intval', $chart_ppp))
+    json_encode(array_map('intval', $chart_ppp)),
+    json_encode(site_url('dashboard/ppp_active_json')),
+    json_encode($total_customer),
+    json_encode($selected_router_id)
 );
 
 include APPPATH . 'views/layout/master.php';

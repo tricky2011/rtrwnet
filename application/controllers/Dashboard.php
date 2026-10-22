@@ -211,7 +211,7 @@ class Dashboard extends MY_Controller
             'ticket_bulan_ini' => $this->count_tickets_this_month($router_id),
             'total_pendapatan' => $this->query_income_per_router($router_id, $range),
             'error_log' => $this->count_error_logs_this_month(),
-            'ppp_active' => $this->query_ppp_active_per_router($router_id),
+            'ppp_active' => null, // Loaded separately so offline routers do not block login.
             'total_pengeluaran' => $this->query_expense_per_router($router_id, $range),
             'total_customer_router' => $this->query_customer_addition_per_router($router_id, $range),
         );
@@ -485,25 +485,52 @@ class Dashboard extends MY_Controller
         return (int) $this->db->count_all_results();
     }
 
-    private function query_ppp_active_per_router($router_id = null)
+    public function ppp_active_json()
     {
-        if ($router_id === null || (int) $router_id <= 0) {
-            $total = 0;
-            foreach ($this->dashboard_router_options as $router) {
-                $rid = (int) ($router['id'] ?? 0);
-                if ($rid > 0) {
-                    $total += $this->query_ppp_active_per_router($rid);
-                }
-            }
-            return $total;
+        $this->require_role(array('superadmin', 'admin'));
+        $context = $this->resolve_dashboard_router_context((string) $this->session->userdata('role'));
+        $router_ids = array_column($context['router_options'], 'id');
+        if ($context['selected_router_id'] !== null) {
+            $router_ids = array((int) $context['selected_router_id']);
         }
+        // Release the session before network I/O so other pages remain usable.
+        session_write_close();
+        $this->load->driver('cache', array('adapter' => 'file', 'backup' => 'dummy'));
+        $total = 0;
+        $available = 0;
+        $unavailable = 0;
+        foreach ($router_ids as $router_id) {
+            $key = 'dashboard_ppp_active_v1_router_' . (int) $router_id;
+            $snapshot = $this->cache->get($key);
+            if (!is_array($snapshot)) {
+                $count = $this->query_ppp_active_per_router((int) $router_id);
+                $snapshot = array('count' => $count);
+                $this->cache->save($key, $snapshot, $count === null ? 15 : 60);
+            }
+            if ($snapshot['count'] === null) {
+                $unavailable++;
+            } else {
+                $total += (int) $snapshot['count'];
+                $available++;
+            }
+        }
+        $this->output->set_content_type('application/json')
+            ->set_header('Cache-Control: no-store')
+            ->set_output(json_encode(array(
+                'total' => $available > 0 ? $total : null,
+                'unavailable_routers' => $unavailable,
+                'router_id' => $context['selected_router_id'],
+            )));
+    }
 
+    private function query_ppp_active_per_router($router_id)
+    {
         if (function_exists('connectRouter')) {
-            $connect = connectRouter((int) $router_id);
+            $connect = connectRouter((int) $router_id, array('timeout' => 2, 'attempts' => 1, 'delay' => 0));
             if (!empty($connect['success']) && !empty($connect['api'])) {
                 try {
                     $active = $connect['api']->comm('/ppp/active/print');
-                    if (is_array($active)) {
+                    if (is_array($active) && !isset($active['!trap']) && !isset($active['!fatal'])) {
                         return count($active);
                     }
                 } catch (Throwable $e) {
@@ -516,30 +543,18 @@ class Dashboard extends MY_Controller
             }
         }
 
-        if ($this->db->table_exists('pppoe_secrets')) {
-            $fields = $this->db->list_fields('pppoe_secrets');
-            if (in_array('router_id', $fields, true)) {
-                $this->db->from('pppoe_secrets');
-                $this->db->where('router_id', (int) $router_id);
-                if (in_array('disabled', $fields, true)) {
-                    $this->db->where('disabled', 0);
-                }
-                return (int) $this->db->count_all_results();
-            }
-        }
-
-        return 0;
+        return null;
     }
 
     private function query_ppp_active_snapshot($router_id, $month_end_datetime)
     {
         if (!$this->db->table_exists('pppoe_secrets')) {
-            return $this->query_ppp_active_per_router($router_id);
+            return 0;
         }
 
         $fields = $this->db->list_fields('pppoe_secrets');
         if (empty($fields)) {
-            return $this->query_ppp_active_per_router($router_id);
+            return 0;
         }
 
         $this->db->from('pppoe_secrets');

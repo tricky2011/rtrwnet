@@ -63,9 +63,10 @@ if (!function_exists('connectRouter')) {
      * Router connector (single install + kompatibel tenant lama).
      *
      * @param int $router_id
+     * @param array $connection_options Optional timeout, attempts and delay overrides.
      * @return array
      */
-    function connectRouter($router_id)
+    function connectRouter($router_id, array $connection_options = array())
     {
         $CI =& get_instance();
         $CI->load->database();
@@ -217,6 +218,16 @@ if (!function_exists('connectRouter')) {
         $api->port = $port;
         $api->timeout = $timeout;
         $api->ssl = $use_ssl;
+        // Interactive summaries can use a shorter budget than background syncs.
+        if (isset($connection_options['timeout'])) {
+            $api->timeout = max(1, (int) $connection_options['timeout']);
+        }
+        if (isset($connection_options['attempts'])) {
+            $api->attempts = max(1, (int) $connection_options['attempts']);
+        }
+        if (isset($connection_options['delay'])) {
+            $api->delay = max(0, (int) $connection_options['delay']);
+        }
 
         $ok = @$api->connect($host, $username, $password);
         if (!$ok) {
@@ -475,56 +486,20 @@ if (!function_exists('telegram_dispatch_to_groups')) {
                 continue;
             }
 
-            $url = 'https://api.telegram.org/bot' . $token . '/sendMessage';
-            $body = array(
-                'chat_id' => $chat_id,
-                'text' => $message,
-                'parse_mode' => $parse_mode,
-                'disable_web_page_preview' => true,
-            );
-            if (!empty($reply_markup)) {
-                $body['reply_markup'] = $reply_markup;
-            }
-
-            $ch = curl_init();
-            curl_setopt_array($ch, array(
-                CURLOPT_URL => $url,
-                CURLOPT_POST => true,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => 10,
-                CURLOPT_CONNECTTIMEOUT => 5,
-                CURLOPT_HTTPHEADER => array('Content-Type: application/json'),
-                CURLOPT_POSTFIELDS => json_encode($body),
-            ));
-            $resp = curl_exec($ch);
-            $err = curl_error($ch);
-            curl_close($ch);
-
-            if ($err) {
-                $failed++;
-                log_message('error', '[TELEGRAM] cURL error: ' . $err);
-                $failure_messages[] = 'cURL error untuk chat_id=' . $chat_id . ': ' . $err;
-                continue;
-            }
-
-            $json = json_decode((string) $resp, true);
-            if (is_array($json) && !empty($json['ok'])) {
+            $CI->load->library('telegram_service');
+            $result = !empty($reply_markup)
+                ? $CI->telegram_service->send_message_with_reply_markup($token, $chat_id, $message, $reply_markup, $parse_mode)
+                : $CI->telegram_service->send_message($token, $chat_id, $message, $parse_mode);
+            if (!empty($result['success'])) {
                 $sent++;
                 $dispatch_cache[$dispatch_key] = true;
                 continue;
             }
 
             $failed++;
-            $description = '';
-            if (is_array($json) && !empty($json['description'])) {
-                $description = trim((string) $json['description']);
-            }
-            if ($description !== '') {
-                $failure_messages[] = 'Telegram API untuk chat_id=' . $chat_id . ': ' . $description;
-            } else {
-                $failure_messages[] = 'Telegram API gagal untuk chat_id=' . $chat_id;
-            }
-            log_message('error', '[TELEGRAM] send failed: ' . substr((string) $resp, 0, 300));
+            $description = (string) ($result['message'] ?? 'Telegram API gagal');
+            $failure_messages[] = 'Telegram untuk chat_id=' . $chat_id . ': ' . $description;
+
         }
 
         $summary = 'Pengiriman Telegram selesai. Berhasil=' . $sent . ', gagal=' . $failed;

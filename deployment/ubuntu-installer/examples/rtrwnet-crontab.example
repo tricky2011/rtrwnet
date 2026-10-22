@@ -9,3 +9,6 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 */10 * * * * ${WEB_USER} ${PHP_BIN} ${APP_ROOT}/index.php cron/Static_ip_cron sync_static_ip_arp >/dev/null 2>&1
 */10 * * * * ${WEB_USER} ${PHP_BIN} ${APP_ROOT}/index.php CronNotification run_all >/dev/null 2>&1
 */15 * * * * ${WEB_USER} ${PHP_BIN} ${APP_ROOT}/index.php Helpdesk_cron check_sla >/dev/null 2>&1
+
+# Service checks Asia/Jakarta: tanggal 10 mulai 08.00 WIB; retries only unsent parts.
+0 * * * * ${WEB_USER} ${PHP_BIN} ${APP_ROOT}/index.php cron/Offline_collection_cron run >/dev/null 2>&1

@@ -8,7 +8,7 @@ $telegram_bots = isset($telegram_bots) && is_array($telegram_bots) ? $telegram_b
 $telegram_groups = isset($telegram_groups) && is_array($telegram_groups) ? $telegram_groups : array();
 $telegram_type_options = isset($telegram_type_options) && is_array($telegram_type_options)
     ? $telegram_type_options
-    : array('teknisi' => 'Teknisi', 'admin' => 'Admin', 'owner' => 'Owner', 'alert' => 'Alert');
+    : array('teknisi' => 'Teknisi', 'admin' => 'Admin', 'owner' => 'Owner', 'alert' => 'Alert', 'collection' => 'Penagihan Rumah (Cash)');
 $router_options = isset($router_options) && is_array($router_options) ? $router_options : array();
 $current_role = function_exists('normalizeRole')
     ? normalizeRole((string) $this->session->userdata('role'))

@@ -311,7 +311,7 @@ class NetworkMap extends MY_Controller
             return $this->respond_with_csrf(
                 422,
                 false,
-                $db_message !== '' ? ('Gagal menghapus Router: ' . $db_message) : 'Gagal menghapus Router.'
+                $this->router_model->get_delete_error() ?: 'Gagal menghapus Router.'
             );
         }
 

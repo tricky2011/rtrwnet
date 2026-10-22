@@ -491,6 +491,9 @@ ob_start();
                                 $status_raw = strtolower((string) ($r['status'] ?? 'issued'));
                                 list($status_label, $badge_class) = billing_status_badge($status_raw);
                                 $period = !empty($r['billing_period_start']) ? date('Y-m', strtotime((string) $r['billing_period_start'])) : '-';
+                                if (!empty($r['billing_period_end']) && substr($r['billing_period_end'], 0, 7) !== $period) {
+                                    $period .= ' – ' . substr($r['billing_period_end'], 0, 7);
+                                }
                                 $due_date = !empty($r['due_date']) ? date('d-m-Y', strtotime((string) $r['due_date'])) : '-';
                                 $total_amount = (float) ($r['total_amount'] ?? 0);
                                 $balance_amount = (float) ($r['balance_amount'] ?? max(0, $total_amount - (float) ($r['paid_amount'] ?? 0)));
@@ -591,6 +594,10 @@ ob_start();
                                             <?php echo form_open('billing/mark-paid/' . $invoice_id, array('class' => 'd-inline')); ?>
                                                 <input type="hidden" name="return_url" value="<?php echo html_escape($billing_return_url); ?>">
                                                 <button type="submit" class="btn btn-sm btn-success" <?php echo $can_mark_paid ? '' : 'disabled'; ?>>Lunas</button>
+                                                <select name="method" class="form-select form-select-sm d-inline-block w-auto" aria-label="Metode pembayaran" <?php echo $can_mark_paid ? '' : 'disabled'; ?>>
+                                                    <option value="cash">Cash</option>
+                                                    <option value="bank_transfer">Transfer</option>
+                                                </select>
                                             <?php echo form_close(); ?>
 
                                             <?php echo form_open('billing/mark-overdue/' . $invoice_id, array('class' => 'd-inline')); ?>

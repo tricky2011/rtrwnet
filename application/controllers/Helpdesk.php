@@ -159,6 +159,7 @@ class Helpdesk extends MY_Controller
             $telegram = helpdesk_telegram_ticket_created($ticket);
             if (empty($telegram['success'])) {
                 log_message('error', '[HELPDESK][TELEGRAM][CREATE] ' . (string) ($telegram['message'] ?? 'unknown'));
+                $this->session->set_flashdata('error', 'Tiket tersimpan, tetapi notifikasi Telegram gagal dikirim. Silakan periksa koneksi server dan pengaturan Telegram.');
             }
         }
 

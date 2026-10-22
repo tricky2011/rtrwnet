@@ -10,7 +10,7 @@
   }
 
   function initLoader() {
-    window.addEventListener('load', function () {
+    onReady(function () {
       var loader = document.getElementById('appLoader');
       if (!loader) return;
       loader.classList.add('hidden');

@@ -971,7 +971,11 @@ class Customers extends MY_Controller
                     continue;
                 }
 
-                $inserted++;
+                if (!empty($result['skipped'])) {
+                    $skipped++;
+                } else {
+                    $inserted++;
+                }
             }
 
             if (!empty($failed_rows)) {
@@ -1196,6 +1200,23 @@ class Customers extends MY_Controller
         if ($this->has_field('due_date_day')) {
             $this->form_validation->set_rules('due_date_day', 'Tanggal jatuh tempo', 'trim|integer|greater_than_equal_to[1]|less_than_equal_to[31]');
         }
+        if ($this->has_field('billing_interval_months')) {
+            $this->form_validation->set_rules('billing_interval_months', 'Siklus tagihan', 'required|in_list[1,2]');
+            $this->form_validation->set_rules('billing_cycle_start', 'Bulan awal siklus', 'trim|callback_valid_billing_cycle_start');
+            $this->form_validation->set_rules('payment_collection_method', 'Cara penagihan', 'required|in_list[unspecified,transfer,cash_visit]');
+        }
+    }
+
+    public function valid_billing_cycle_start($value)
+    {
+        if ($value === '' && (int) $this->input->post('billing_interval_months') !== 2) {
+            return true;
+        }
+        if (preg_match('/^[1-9]\d{3}-(0[1-9]|1[0-2])$/D', (string) $value)) {
+            return true;
+        }
+        $this->form_validation->set_message('valid_billing_cycle_start', 'Bulan awal siklus wajib berupa bulan yang valid untuk tagihan 2 bulan.');
+        return false;
     }
 
     private function resolve_customer_service_mode($customer = null, $customer_id = 0)
@@ -1444,6 +1465,9 @@ class Customers extends MY_Controller
             'installation_date',
             'join_date',
             'due_date_day',
+            'billing_interval_months',
+            'billing_cycle_start',
+            'payment_collection_method',
             'status',
             'technician_id',
             'router_id',
@@ -1472,6 +1496,12 @@ class Customers extends MY_Controller
             }
             if ($field === 'due_date_day') {
                 $value = ($value === '') ? null : (int) $value;
+            }
+            if ($field === 'billing_interval_months') {
+                $value = (int) $value;
+            }
+            if ($field === 'billing_cycle_start') {
+                $value = $value === '' ? null : $value . '-01';
             }
 
             $payload[$field] = $value;
@@ -2336,14 +2366,18 @@ class Customers extends MY_Controller
 
         $fields = $this->db->list_fields('invoices');
         $period_ym = date('Y-m');
-        $period_start = $period_ym . '-01';
-        $period_end = date('Y-m-t', strtotime($period_start));
+        $cycle = $this->customer_invoice_cycle($customer_id, $period_ym);
+        if ($cycle === null) {
+            return array('success' => true, 'skipped' => true);
+        }
+        $period_start = $cycle['start'];
+        $period_end = $cycle['end'];
         $issue_date = date('Y-m-d');
         $install_date = $this->resolve_customer_install_date((int) $customer_id);
         $due_date = $this->calculate_due_date_for_customer((int) $customer_id, $install_date, $period_start);
         $valid_service_id = $this->resolve_valid_customer_service_id((int) $customer_id, (int) $customer_service_id);
 
-        $subtotal = (float) $price;
+        $subtotal = round((float) $price * $cycle['months'], 2);
         $tax_amount = 0;
         $discount_amount = 0;
         $total_amount = round($subtotal + $tax_amount - $discount_amount, 2);
@@ -2365,7 +2399,7 @@ class Customers extends MY_Controller
             'customer_service_id' => $valid_service_id,
             'billing_period_start' => $period_start,
             'billing_period_end' => $period_end,
-            'issue_date' => $issue_date,
+            'issue_date' => min($issue_date, $due_date),
             'due_date' => $due_date,
             'subtotal' => $subtotal,
             'tax_amount' => $tax_amount,
@@ -2374,7 +2408,7 @@ class Customers extends MY_Controller
             'paid_amount' => 0,
             'balance_amount' => $total_amount,
             'status' => 'issued',
-            'notes' => 'Auto invoice saat customer dibuat.',
+            'notes' => 'Auto invoice saat customer dibuat. Siklus ' . $cycle['months'] . ' bulan.',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         );
@@ -3620,14 +3654,18 @@ class Customers extends MY_Controller
     {
         $fields = $this->db->list_fields('invoices');
         $period_ym = date('Y-m');
-        $period_start = $period_ym . '-01';
-        $period_end = date('Y-m-t', strtotime($period_start));
+        $cycle = $this->customer_invoice_cycle($customer_id, $period_ym);
+        if ($cycle === null) {
+            return array('success' => true, 'skipped' => true);
+        }
+        $period_start = $cycle['start'];
+        $period_end = $cycle['end'];
         $issue_date = date('Y-m-d');
         $install_date = $this->resolve_customer_install_date((int) $customer_id);
         $due_date = $this->calculate_due_date_for_customer((int) $customer_id, $install_date, $period_start);
         $valid_service_id = $this->resolve_valid_customer_service_id((int) $customer_id, (int) $customer_service_id);
 
-        $subtotal = (float) $price;
+        $subtotal = round((float) $price * $cycle['months'], 2);
         $tax_amount = 0;
         $discount_amount = 0;
         $total_amount = round($subtotal + $tax_amount - $discount_amount, 2);
@@ -3638,7 +3676,7 @@ class Customers extends MY_Controller
             'customer_service_id' => $valid_service_id,
             'billing_period_start' => $period_start,
             'billing_period_end' => $period_end,
-            'issue_date' => $issue_date,
+            'issue_date' => min($issue_date, $due_date),
             'due_date' => $due_date,
             'subtotal' => $subtotal,
             'tax_amount' => $tax_amount,
@@ -3647,7 +3685,7 @@ class Customers extends MY_Controller
             'paid_amount' => 0,
             'balance_amount' => $total_amount,
             'status' => 'issued',
-            'notes' => $note !== '' ? $note : 'Bulk generate invoice',
+            'notes' => ($note !== '' ? $note : 'Bulk generate invoice') . '. Siklus ' . $cycle['months'] . ' bulan.',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         );
@@ -3663,6 +3701,17 @@ class Customers extends MY_Controller
         }
 
         return array('success' => true, 'invoice_id' => (int) $this->db->insert_id());
+    }
+
+    private function customer_invoice_cycle($customer_id, $period)
+    {
+        $this->load->library('billing_cycle');
+        $customer = (array) $this->customer_model->get_by_id($customer_id);
+        $cycle = $this->billing_cycle->resolve($customer, $period);
+        if ($cycle !== null && $this->billing_automation_model->invoice_overlaps_period($customer_id, $cycle['start'], $cycle['end'])) {
+            return null;
+        }
+        return $cycle;
     }
 
     private function resolve_valid_customer_service_id($customer_id, $customer_service_id)

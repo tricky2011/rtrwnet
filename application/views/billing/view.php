@@ -98,6 +98,9 @@ $last_payment_method = strtoupper((string) ($invoice['last_payment_method'] ?? '
 $period_label = '-';
 if ($period_start !== '') {
     $period_label = date('F Y', strtotime($period_start));
+    if ($period_end !== '' && substr($period_end, 0, 7) !== substr($period_start, 0, 7)) {
+        $period_label .= ' – ' . date('F Y', strtotime($period_end));
+    }
 }
 
 $status_stamp = 'BELUM LUNAS';
@@ -163,6 +166,10 @@ ob_start();
         <?php if ($can_mark_paid): ?>
             <?php echo form_open('billing/mark-paid/' . $invoice_id, array('class' => 'd-inline')); ?>
                 <input type="hidden" name="return_url" value="<?php echo html_escape($return_url); ?>">
+                <select name="method" class="form-select form-select-sm d-inline-block w-auto" aria-label="Metode pembayaran">
+                    <option value="cash">Cash</option>
+                    <option value="bank_transfer">Transfer</option>
+                </select>
                 <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check2-circle"></i> Lunas</button>
             <?php echo form_close(); ?>
         <?php endif; ?>

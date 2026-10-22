@@ -205,6 +205,7 @@ class Settings extends MY_Controller
                 'admin' => 'Admin',
                 'owner' => 'Owner',
                 'alert' => 'Alert',
+                'collection' => 'Penagihan Rumah (Cash)',
             ),
         ));
     }
