@@ -439,6 +439,7 @@ class CustomerUpgrade extends MY_Controller
             'profile_id' => $new_plan_id,
             'ppp_profile_id' => $new_plan_id,
             'package_price' => $new_price,
+            'monthly_price_override' => null,
             'router_id' => $router_id,
             'pppoe_username' => $pppoe_username,
             'username' => $pppoe_username,

@@ -193,6 +193,15 @@ Setelah update source, restart worker yang relevan melalui prosedur operasional.
 4. Jalankan preview bila perlu untuk melihat jumlah pelanggan/tujuan/bagian.
 5. Setelah waktu pengiriman, periksa sent_at per bagian. Snapshot laporan adalah kondisi saat snapshot dibuat, sehingga pembayaran sesudahnya perlu dicek lagi saat petugas melakukan penagihan.
 
+### Mengubah harga per customer
+
+1. Pada menu Customer, klik **Edit harga** di kolom Harga / Bulan atau buka **Edit**.
+2. Isi **Harga Khusus Customer / Bulan**, misalnya `125000`, lalu simpan. Pilihan paket tetap menentukan bandwidth. Kosongkan harga khusus untuk kembali memakai harga layanan/paket.
+3. Periksa nominal pada daftar dan ringkasan Offline/TF. Invoice baru memakai harga khusus; invoice yang sudah terbit mempertahankan nominalnya. Untuk siklus dua bulan, nominal invoice adalah dua kali harga bulanan.
+4. Setelah menjalankan Upgrade Paket, periksa kembali harga khusus karena proses upgrade memakai harga paket baru.
+
+Kolom penyimpanan berasal dari migrasi `20261023090000_customer_monthly_price_override`. Pemeriksaan integrasi `php scripts/tests/billing_collection_test.php` mencakup penyimpanan/reset harga, pembatasan router, ringkasan, dan invoice dua bulanan dengan tabel sementara.
+
 ### Akhir periode
 
 Rekonsiliasi saldo invoice, pembayaran per tanggal/metode, cashflow otomatis/manual, dan transaksi koreksi. Identifikasi pembayaran sebagian yang belum masuk cashflow otomatis, void/hard delete, serta perubahan invoice yang dapat memengaruhi histori. Arsipkan laporan dan bukti transaksi sesuai kebijakan operator.

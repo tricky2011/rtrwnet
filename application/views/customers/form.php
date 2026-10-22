@@ -205,6 +205,10 @@ ob_start();
                 <div class="form-text">Bisa dipakai untuk menyimpan paket customer PPPoE maupun Static.</div>
             </div>
 
+            <?php if ($has_field('monthly_price_override')): ?>
+                <?php $this->load->view('customers/pricing', array('pricing_customer' => $customer)); ?>
+            <?php endif; ?>
+
             <div class="col-md-6">
                 <label class="form-label">Assign Teknisi</label>
                 <select class="form-select" name="technician_id">

@@ -247,6 +247,9 @@ ob_start();
                         <label class="form-label">Harga Profile</label>
                         <input type="text" class="form-control" id="profile_price_display" readonly placeholder="Rp 0">
                     </div>
+                    <?php if ($has_field('monthly_price_override')): ?>
+                        <?php $this->load->view('customers/pricing', array('pricing_customer' => array())); ?>
+                    <?php endif; ?>
                     <div class="col-md-6 pppoe-field">
                         <label class="form-label">Username PPP</label>
                         <input type="text" class="form-control" name="pppoe_username" id="pppoe_username" value="<?php echo html_escape(set_value('pppoe_username')); ?>">

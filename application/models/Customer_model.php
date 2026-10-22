@@ -37,7 +37,7 @@ class Customer_model extends CI_Model
         return $this->build_list_query()->get()->result();
     }
 
-    public function get_paginated($limit = 20, $offset = 0, $keyword = '')
+    public function get_paginated($limit = 20, $offset = 0, $keyword = '', $collection_method = '')
     {
         if (!$this->db->table_exists($this->table)) {
             return array();
@@ -46,19 +46,53 @@ class Customer_model extends CI_Model
         $limit = max(1, (int) $limit);
         $offset = max(0, (int) $offset);
 
-        return $this->build_list_query($keyword)
+        return $this->build_list_query($keyword, false, $collection_method)
             ->limit($limit, $offset)
             ->get()
             ->result();
     }
 
-    public function count_filtered($keyword = '')
+    public function count_filtered($keyword = '', $collection_method = '')
     {
         if (!$this->db->table_exists($this->table)) {
             return 0;
         }
 
-        return (int) $this->build_list_query($keyword, true)->count_all_results();
+        return (int) $this->build_list_query($keyword, true, $collection_method)->count_all_results();
+    }
+
+    public function get_collection_summary()
+    {
+        $summary = array('total' => 0, 'cash_visit' => 0, 'transfer' => 0, 'unspecified' => 0);
+        foreach (array_keys($summary) as $key) {
+            $summary[$key . '_amount'] = 0.0;
+        }
+        if (!$this->db->table_exists($this->table)) {
+            return $summary;
+        }
+
+        // Deduplicate customers before summing; equal package prices from
+        // different customers must still each contribute to the total.
+        $method = $this->has_field('payment_collection_method')
+            ? "CASE WHEN c.payment_collection_method IN ('cash_visit', 'transfer') THEN c.payment_collection_method ELSE 'unspecified' END"
+            : "'unspecified'";
+        $customer_query = $this->build_list_query('', true, '', true)
+            ->select('c.id, ' . $method . ' AS collection_method', false)
+            ->distinct()
+            ->get_compiled_select();
+        $qb = $this->db->from('(' . $customer_query . ') collection_customers')
+            ->select('COUNT(*) AS total, COALESCE(SUM(collection_package_price), 0) AS total_amount', false);
+        foreach (array('cash_visit', 'transfer', 'unspecified') as $key) {
+            $qb->select("COUNT(CASE WHEN collection_method = '{$key}' THEN 1 END) AS {$key}", false);
+            $qb->select("COALESCE(SUM(CASE WHEN collection_method = '{$key}' THEN collection_package_price ELSE 0 END), 0) AS {$key}_amount", false);
+        }
+        $row = $qb->get()->row_array();
+        foreach (array('total', 'cash_visit', 'transfer', 'unspecified') as $key) {
+            $summary[$key] = (int) ($row[$key] ?? 0);
+            $summary[$key . '_amount'] = (float) ($row[$key . '_amount'] ?? 0);
+        }
+
+        return $summary;
     }
 
     public function get_by_id($id)
@@ -390,7 +424,7 @@ class Customer_model extends CI_Model
         return in_array($field, $this->fields, true);
     }
 
-    private function build_list_query($keyword = '', $count_only = false)
+    private function build_list_query($keyword = '', $count_only = false, $collection_method = '', $with_package_price = false)
     {
         $qb = $this->db->from($this->table . ' c');
         if (!$count_only) {
@@ -451,6 +485,30 @@ class Customer_model extends CI_Model
             }
         } elseif (!$count_only && $customer_has_profile_id) {
             $qb->select('c.profile_id as effective_profile_id', false);
+        }
+
+        if (!$count_only || $with_package_price) {
+            // Customer override first, then the existing positive-price fallback.
+            $price_columns = array();
+            if ($has_service_join && in_array('price', $cs_fields, true)) {
+                $price_columns[] = 'cs.price';
+            }
+            if ($has_profile_join) {
+                $price_columns[] = 'p.price';
+            }
+            if ($this->has_field('package_price')) {
+                $price_columns[] = 'c.package_price';
+            }
+            $price_expression = 'CASE';
+            if ($this->has_field('monthly_price_override')) {
+                $price_expression .= ' WHEN c.monthly_price_override >= 0 THEN c.monthly_price_override';
+            }
+            foreach ($price_columns as $column) {
+                $price_expression .= ' WHEN ' . $column . ' > 0 THEN ' . $column;
+            }
+            $price_expression = (empty($price_columns) && !$this->has_field('monthly_price_override'))
+                ? '0' : $price_expression . ' ELSE 0 END';
+            $qb->select($price_expression . ' AS ' . ($with_package_price ? 'collection_package_price' : 'effective_monthly_price'), false);
         }
 
         if ($this->db->table_exists('work_orders')) {
@@ -604,6 +662,22 @@ class Customer_model extends CI_Model
                 $qb->where('1 = 0', null, false);
             }
             $qb->group_end();
+        }
+
+        if (in_array($collection_method, array('cash_visit', 'transfer', 'unspecified'), true)) {
+            if (!$this->has_field('payment_collection_method')) {
+                if ($collection_method !== 'unspecified') {
+                    $qb->where('1 = 0', null, false);
+                }
+            } elseif ($collection_method === 'unspecified') {
+                // Match the summary remainder, including empty/legacy values.
+                $qb->group_start()
+                    ->where('c.payment_collection_method IS NULL', null, false)
+                    ->or_where_not_in('c.payment_collection_method', array('cash_visit', 'transfer'))
+                    ->group_end();
+            } else {
+                $qb->where('c.payment_collection_method', $collection_method);
+            }
         }
 
         $this->apply_tenant_scope($qb, 'c');

@@ -331,6 +331,7 @@ class Billing_automation_service
     private function resolve_customer_price(array $customer)
     {
         $candidates = array(
+            $customer['monthly_price_override'] ?? null,
             $customer['service_price'] ?? null,
             $customer['profile_price'] ?? null,
             $customer['price'] ?? null,

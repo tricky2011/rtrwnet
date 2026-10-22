@@ -41,18 +41,24 @@ class Customers extends MY_Controller
     {
         try {
             $keyword = trim((string) $this->input->get('search', true));
+            $collection_method = $this->input->get('collection_method', true);
+            if (!in_array($collection_method, array('cash_visit', 'transfer', 'unspecified'), true)) {
+                $collection_method = '';
+            }
             $pager = $this->init_pagination(
                 'customers',
-                $this->customer_model->count_filtered($keyword),
+                $this->customer_model->count_filtered($keyword, $collection_method),
                 20,
                 3
             );
 
             $this->load->view('customers/list', array(
-                'customers' => $this->customer_model->get_paginated($pager['per_page'], $pager['offset'], $keyword),
+                'customers' => $this->customer_model->get_paginated($pager['per_page'], $pager['offset'], $keyword, $collection_method),
                 'pagination' => $pager['links'],
                 'search' => $keyword,
+                'collection_method' => $collection_method,
                 'total_rows' => $pager['total_rows'],
+                'collection_summary' => $this->customer_model->get_collection_summary(),
                 'per_page' => (int) $pager['per_page'],
                 'per_page_options' => $this->get_per_page_options(),
             ));
@@ -143,11 +149,12 @@ class Customers extends MY_Controller
             }
 
             $invoice_created = false;
-            if ($profile_price > 0) {
+            $invoice_price = (float) ($payload['monthly_price_override'] ?? $profile_price);
+            if ($invoice_price > 0) {
                 $invoice_result = $this->create_initial_invoice(
                     (int) $customer_id,
                     0,
-                    $profile_price,
+                    $invoice_price,
                     (int) $router_id
                 );
                 if (empty($invoice_result['success'])) {
@@ -254,7 +261,7 @@ class Customers extends MY_Controller
         $invoice_result = $this->create_initial_invoice(
             $customer_id,
             (int) $service_result['customer_service_id'],
-            (float) ($profile['price'] ?? 0),
+            (float) ($payload['monthly_price_override'] ?? ($profile['price'] ?? 0)),
             (int) $resolved_service_router_id
         );
         if (empty($invoice_result['success'])) {
@@ -1002,7 +1009,7 @@ class Customers extends MY_Controller
                 $price = (float) ($service_context['price'] ?? 0);
                 $customer_service_id = (int) ($service_context['customer_service_id'] ?? 0);
 
-                if ($price <= 0) {
+                if ($price < 0 || ($price == 0 && !isset($customer->monthly_price_override))) {
                     $failed++;
                     $failed_rows[] = 'ID ' . $customer_id . ': harga paket tidak valid.';
                     continue;
@@ -1183,6 +1190,9 @@ class Customers extends MY_Controller
         $this->form_validation->set_message('regex_match', 'Format {field} tidak valid.');
 
         $this->form_validation->set_rules('full_name', 'Nama pelanggan', 'trim|required|min_length[3]|max_length[150]');
+        if ($this->has_field('monthly_price_override')) {
+            $this->form_validation->set_rules('monthly_price_override', 'Harga khusus customer', 'trim|callback_valid_monthly_price');
+        }
         $this->form_validation->set_rules('service_mode', 'Mode layanan', 'trim|required|in_list[pppoe,static]');
 
         $service_mode = strtolower(trim((string) $service_mode));
@@ -1249,6 +1259,19 @@ class Customers extends MY_Controller
             $this->form_validation->set_rules('billing_cycle_start', 'Bulan awal siklus', 'trim|callback_valid_billing_cycle_start');
             $this->form_validation->set_rules('payment_collection_method', 'Cara penagihan', 'required|in_list[unspecified,transfer,cash_visit]');
         }
+    }
+
+    public function valid_monthly_price($value)
+    {
+        $is_array_input = is_array($this->input->post('monthly_price_override'));
+        if (!$is_array_input && ($value === '' || $value === null)) {
+            return true;
+        }
+        if (!$is_array_input && is_string($value) && preg_match('/^\d{1,12}(?:\.\d{1,2})?$/D', $value)) {
+            return true;
+        }
+        $this->form_validation->set_message('valid_monthly_price', 'Harga khusus customer harus berupa angka 0–999999999999.99 tanpa pemisah ribuan, maksimal 2 angka desimal.');
+        return false;
     }
 
     public function valid_billing_cycle_start($value)
@@ -1519,6 +1542,7 @@ class Customers extends MY_Controller
             'profile_id',
             'ppp_profile_id',
             'package_price',
+            'monthly_price_override',
         );
 
         foreach ($candidate_fields as $field) {
@@ -1540,6 +1564,9 @@ class Customers extends MY_Controller
             }
             if ($field === 'due_date_day') {
                 $value = ($value === '') ? null : (int) $value;
+            }
+            if ($field === 'monthly_price_override') {
+                $value = ($value === '') ? null : number_format((float) $value, 2, '.', '');
             }
             if ($field === 'billing_interval_months') {
                 $value = (int) $value;
@@ -3640,6 +3667,10 @@ class Customers extends MY_Controller
             if (!empty($profile)) {
                 $result['price'] = (float) ($profile['price'] ?? 0);
             }
+        }
+
+        if (is_object($customer) && isset($customer->monthly_price_override)) {
+            $result['price'] = (float) $customer->monthly_price_override;
         }
 
         return $result;

@@ -399,6 +399,9 @@ class CustomerUpgrade_model extends CI_Model
 
     private function resolve_old_price(array $customer, array $service, $old_plan)
     {
+        if (isset($customer['monthly_price_override']) && (float) $customer['monthly_price_override'] >= 0) {
+            return round((float) $customer['monthly_price_override'], 2);
+        }
         if (isset($service['price']) && (float) $service['price'] > 0) {
             return round((float) $service['price'], 2);
         }

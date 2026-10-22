@@ -9,8 +9,16 @@ $role = (string) $this->session->userdata('role');
 $can_delete = in_array($role, array('superadmin', 'admin'), true);
 $can_manage_bulk = $can_delete;
 $search = isset($search) ? (string) $search : '';
+$collection_method = isset($collection_method) ? (string) $collection_method : '';
 $pagination = isset($pagination) ? (string) $pagination : '';
 $total_rows = isset($total_rows) ? (int) $total_rows : count($customers);
+$collection_summary = isset($collection_summary) ? (array) $collection_summary : array();
+$collection_summary_cards = array(
+    array('key' => 'total', 'label' => 'Total Customer', 'description' => 'Semua cara penagihan', 'color' => 'primary'),
+    array('key' => 'cash_visit', 'label' => 'Offline / Cash', 'description' => 'Ditagih ke rumah', 'color' => 'warning'),
+    array('key' => 'transfer', 'label' => 'Transfer (TF)', 'description' => 'Penagihan via transfer', 'color' => 'success'),
+    array('key' => 'unspecified', 'label' => 'Belum Ditentukan', 'description' => 'Cara penagihan belum diatur', 'color' => 'secondary'),
+);
 $per_page = isset($per_page) ? (int) $per_page : 20;
 $per_page_options = isset($per_page_options) && is_array($per_page_options) ? $per_page_options : array(20, 50, 100, 500);
 $csrf_name = $this->security->get_csrf_token_name();
@@ -96,6 +104,36 @@ ob_start();
     }
 }
 </style>
+<div class="mb-3">
+    <div class="fw-semibold mb-1">Ringkasan Penagihan Customer</div>
+    <p class="small text-muted mb-2">Jumlah seluruh customer sesuai akses router, tidak dipengaruhi pencarian atau filter. Klik kartu untuk melihat daftar per jenis penagihan.</p>
+    <div class="row g-3">
+        <?php foreach ($collection_summary_cards as $summary_card): ?>
+        <?php
+        $card_method = $summary_card['key'] === 'total' ? '' : $summary_card['key'];
+        $card_active = $collection_method === $card_method;
+        $card_url = site_url('customers') . '?' . http_build_query(array(
+            'search' => $search,
+            'collection_method' => $card_method,
+            'per_page' => $per_page,
+        ));
+        ?>
+        <div class="col-6 col-xl-3">
+            <a href="<?php echo html_escape($card_url); ?>" class="card stat-card h-100 text-decoration-none<?php echo $card_active ? ' border-primary' : ''; ?>"<?php echo $card_active ? ' aria-current="page"' : ''; ?>>
+                <div class="card-body">
+                    <div class="text-muted small"><?php echo html_escape($summary_card['label']); ?></div>
+                    <div class="fs-3 fw-bold text-<?php echo html_escape($summary_card['color']); ?>"><?php echo number_format((int) ($collection_summary[$summary_card['key']] ?? 0), 0, ',', '.'); ?></div>
+                    <div class="small text-muted"><?php echo html_escape($summary_card['description']); ?></div>
+                    <div class="mt-2 pt-2 border-top">
+                        <div class="small text-muted">Total harga / bulan</div>
+                        <div class="fw-semibold text-body">Rp <?php echo number_format((float) ($collection_summary[$summary_card['key'] . '_amount'] ?? 0), 0, ',', '.'); ?></div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <?php endforeach; ?>
+    </div>
+</div>
 <div class="card stat-card">
     <div class="card-header bg-white fw-semibold d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-2">
         <span>Customers Table</span>
@@ -152,14 +190,22 @@ ob_start();
                         value="<?php echo html_escape($search); ?>"
                     >
                 </div>
+                <div class="col-md-3">
+                    <select class="form-select form-select-sm" name="collection_method" aria-label="Filter cara penagihan" onchange="this.form.submit();">
+                        <option value="" <?php echo $collection_method === '' ? 'selected' : ''; ?>>Semua cara penagihan</option>
+                        <option value="cash_visit" <?php echo $collection_method === 'cash_visit' ? 'selected' : ''; ?>>Offline / Cash</option>
+                        <option value="transfer" <?php echo $collection_method === 'transfer' ? 'selected' : ''; ?>>Transfer (TF)</option>
+                        <option value="unspecified" <?php echo $collection_method === 'unspecified' ? 'selected' : ''; ?>>Belum Ditentukan</option>
+                    </select>
+                </div>
                 <div class="col-auto">
-                    <button type="submit" class="btn btn-sm btn-outline-primary">Search</button>
+                    <button type="submit" class="btn btn-sm btn-outline-primary">Cari / Filter</button>
                 </div>
                 <div class="col-auto">
                     <a href="<?php echo site_url('customers'); ?>" class="btn btn-sm btn-outline-secondary">Reset</a>
                 </div>
                 <div class="col text-muted small text-md-end">
-                    Total: <?php echo number_format($total_rows, 0, ',', '.'); ?> data
+                    Hasil: <?php echo number_format($total_rows, 0, ',', '.'); ?> customer
                 </div>
             <?php echo form_close(); ?>
         </div>
@@ -194,14 +240,14 @@ ob_start();
                         <th>Status</th>
                         <th>Tanggal Pasang</th>
                         <th>Jatuh Tempo</th>
-                        <th>Harga Paket</th>
+                        <th>Harga / Bulan</th>
                         <th class="text-end pe-3">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($customers)): ?>
                     <tr>
-                        <td class="ps-3 text-muted" colspan="<?php echo $can_manage_bulk ? '9' : '8'; ?>">Belum ada data pelanggan.</td>
+                        <td class="ps-3 text-muted" colspan="<?php echo $can_manage_bulk ? '9' : '8'; ?>"><?php echo ($search !== '' || $collection_method !== '') ? 'Tidak ada customer yang sesuai pencarian atau filter.' : 'Belum ada data pelanggan.'; ?></td>
                     </tr>
                     <?php else: ?>
                         <?php foreach ($customers as $row): ?>
@@ -220,7 +266,9 @@ ob_start();
                         }
                         $profile_label = $format_profile_label($profile_name, $fallback_profile_id);
                         $package_price = 0.0;
-                        if (isset($row->service_price) && (float) $row->service_price > 0) {
+                        if (isset($row->effective_monthly_price)) {
+                            $package_price = (float) $row->effective_monthly_price;
+                        } elseif (isset($row->service_price) && (float) $row->service_price > 0) {
                             $package_price = (float) $row->service_price;
                         } elseif (isset($row->profile_price) && (float) $row->profile_price > 0) {
                             $package_price = (float) $row->profile_price;
@@ -270,6 +318,8 @@ ob_start();
                                     <div class="small text-warning">Cash · Kunjungan rumah</div>
                                 <?php elseif (($row->payment_collection_method ?? '') === 'transfer'): ?>
                                     <div class="small text-muted">Transfer</div>
+                                <?php else: ?>
+                                    <div class="small text-muted">Penagihan belum ditentukan</div>
                                 <?php endif; ?>
                             </td>
                             <td><?php echo html_escape($profile_label); ?></td>
@@ -279,7 +329,13 @@ ob_start();
                             </td>
                             <td><?php echo html_escape($install_date_label); ?></td>
                             <td><?php echo html_escape($due_date_label); ?></td>
-                            <td>Rp <?php echo number_format($package_price, 0, ',', '.'); ?></td>
+                            <td>
+                                Rp <?php echo number_format($package_price, 0, ',', '.'); ?>
+                                <?php if (isset($row->monthly_price_override)): ?>
+                                    <div class="small text-primary">Harga khusus</div>
+                                <?php endif; ?>
+                                <a class="d-block small" href="<?php echo site_url('customers/edit/' . $customer_id); ?>#customer-price">Edit harga</a>
+                            </td>
                             <td class="text-end pe-3">
                                 <div class="d-inline-flex flex-column flex-sm-row gap-1 customer-row-actions">
                                     <a href="<?php echo site_url('customers/edit/' . $customer_id); ?>" class="btn btn-sm btn-outline-primary">Edit</a>

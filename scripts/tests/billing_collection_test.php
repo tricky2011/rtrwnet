@@ -31,7 +31,7 @@ function insert_fixture($table, array $data)
 }
 $router_template = $db->limit(1)->get('routers')->row_array();
 check(!empty($router_template), 'An installed router is required');
-$temporary_tables = array('routers', 'customers', 'invoices', 'customer_services', 'telegram_groups', 'telegram_bots', 'offline_collection_deliveries');
+$temporary_tables = array('routers', 'customers', 'invoices', 'customer_services', 'ppp_profiles', 'pppoe_secrets', 'telegram_groups', 'telegram_bots', 'offline_collection_deliveries');
 foreach ($temporary_tables as $table) {
     $definition = $db->query("SHOW CREATE TABLE `{$table}`")->row_array()['Create Table'];
     $definition = preg_replace('/^CREATE TABLE/', 'CREATE TEMPORARY TABLE', $definition);
@@ -41,6 +41,12 @@ foreach ($temporary_tables as $table) {
     check((bool) $created, 'Temporary table ' . $table . ($created ? '' : ': ' . ($db->error()['message'] ?? 'unknown')));
 }
 try {
+    require_once BASEPATH . 'libraries/Migration.php';
+    require_once APPPATH . 'migrations/20261023090000_customer_monthly_price_override.php';
+    $price_migration = new Migration_Customer_monthly_price_override();
+    $price_migration->up();
+    $price_migration->up();
+    check($db->field_exists('monthly_price_override', 'customers'), 'Customer pricing migration is idempotent on temporary table');
     foreach (array(901, 902) as $id) {
         $router = $router_template;
         $router['id'] = $id;
@@ -177,6 +183,33 @@ try {
     $ci->load->helper('rbac');
     $ci->load->model('customer_model');
     $customers = $ci->customer_model->set_router_scope(901);
+    $zero_amounts = array('total_amount' => 0.0, 'cash_visit_amount' => 0.0, 'transfer_amount' => 0.0, 'unspecified_amount' => 0.0);
+    check($customers->get_collection_summary() === array('total' => 4, 'cash_visit' => 2, 'transfer' => 1, 'unspecified' => 1) + $zero_amounts,
+        'Collection summary counts all visible customers and excludes terminated and other-router customers');
+    $customers->get_paginated(1, 0, 'Customer 9001');
+    check($customers->get_collection_summary() === array('total' => 4, 'cash_visit' => 2, 'transfer' => 1, 'unspecified' => 1) + $zero_amounts,
+        'Collection summary is independent of table search and pagination');
+    foreach (array('cash_visit' => array(9003, 9001), 'transfer' => array(9002), 'unspecified' => array(9006)) as $method => $expected_ids) {
+        $rows = $customers->get_paginated(20, 0, '', $method);
+        check(array_map('intval', array_column($rows, 'id')) === $expected_ids,
+            'Collection filter returns only visible customers for ' . $method);
+        check($customers->count_filtered('', $method) === count($expected_ids),
+            'Filtered pagination total matches list for ' . $method);
+    }
+    check(array_map('intval', array_column($customers->get_paginated(1, 1, '', 'cash_visit'), 'id')) === array(9001),
+        'Collection filter is applied before pagination');
+    check($customers->count_filtered('Customer 9001', 'cash_visit') === 1
+        && $customers->count_filtered('Customer 9001', 'transfer') === 0,
+        'Customer search combines with collection filter');
+    check(empty($customers->get_paginated(20, 0, 'Customer 9001', 'transfer')),
+        'List is empty when search does not match the selected collection method');
+    check($customers->count_filtered() === 4, 'Clearing collection filter restores all visible customers');
+    foreach (array('', 'legacy') as $legacy_method) {
+        $db->where('id', 9006)->update('customers', array('payment_collection_method' => $legacy_method));
+        check(array_map('intval', array_column($customers->get_paginated(20, 0, '', 'unspecified'), 'id')) === array(9006),
+            'Unspecified collection filter includes legacy value: ' . $legacy_method);
+    }
+    $db->where('id', 9006)->update('customers', array('payment_collection_method' => 'unspecified'));
     $before = $db->order_by('id')->get('customers')->result_array();
     check($customers->bulk_update_payment_collection_method(array(9001, 9002, 9002, 9004, 9005, 9999), 'transfer') === 2,
         'Bulk transfer deduplicates and skips missing, deleted and other-router customers');
@@ -193,6 +226,10 @@ try {
     check($db->where_in('id', array(9001, 9002))->where('payment_collection_method', 'cash_visit')->count_all_results('customers') === 2,
         'Both selected customers now use cash visits');
     check($customers->bulk_update_payment_collection_method(array(9001, 9002), 'cash_visit') === 2, 'Repeated bulk choice still succeeds');
+    check($customers->get_collection_summary() === array('total' => 4, 'cash_visit' => 3, 'transfer' => 0, 'unspecified' => 1) + $zero_amounts,
+        'Collection summary reflects updated collection methods');
+    check($customers->count_filtered('', 'transfer') === 0 && $customers->count_filtered('', 'cash_visit') === 3,
+        'Edited collection methods move customers between filtered lists');
     $snapshot = $db->order_by('id')->get('customers')->result_array();
     check($customers->bulk_update_payment_collection_method(array(9001), 'cash') === false, 'Reject unsupported collection method');
     check($customers->bulk_update_payment_collection_method(array(), 'transfer') === 0, 'Empty bulk selection changes nothing');
@@ -201,6 +238,124 @@ try {
     $customers->set_router_scope(902);
     check($customers->bulk_update_payment_collection_method(array(9001, 9004), 'transfer') === 1, 'Switching routers limits bulk edit to newly selected router');
     check($db->where('id', 9001)->get('customers')->row()->payment_collection_method === 'cash_visit', 'Previous router customer stays unchanged');
+    check($customers->get_collection_summary() === array('total' => 1, 'cash_visit' => 0, 'transfer' => 1, 'unspecified' => 0) + $zero_amounts,
+        'Collection summary follows the selected router');
+    check(array_map('intval', array_column($customers->get_paginated(20, 0, '', 'transfer'), 'id')) === array(9004),
+        'Collection filter follows selected router and excludes previous router');
+    $customers->set_router_scope(999999);
+    check($customers->get_collection_summary() === array('total' => 0, 'cash_visit' => 0, 'transfer' => 0, 'unspecified' => 0) + $zero_amounts,
+        'Collection summary returns zero for an empty router');
+
+    // Amounts use monthly package prices, independent of invoice balances/cycles.
+    foreach (array(9001 => 90000, 9002 => 80000, 9003 => 75000, 9004 => 400000, 9005 => 500000, 9006 => 125000) as $id => $price) {
+        $db->where('id', $id)->update('customers', array('package_price' => $price));
+    }
+    $db->where('id', 9002)->update('customers', array('payment_collection_method' => 'transfer', 'profile_id' => 901));
+    $db->where('id', 9003)->update('customers', array('profile_id' => 902));
+    insert_fixture('ppp_profiles', array('id' => 901, 'name' => 'Test 180K', 'price' => 180000, 'router_id' => 901));
+    insert_fixture('ppp_profiles', array('id' => 902, 'name' => 'Test 150K', 'price' => 150000, 'router_id' => 901));
+    foreach (array(array(9001, 250000, 902), array(9001, 150000, 902), array(9002, 0, 901)) as $index => $service) {
+        insert_fixture('customer_services', array('customer_id' => $service[0], 'price' => $service[1], 'ppp_profile_id' => $service[2],
+            'service_number' => 'TEST-AMOUNT-' . $index, 'install_date' => '2026-11-01', 'next_billing_date' => '2026-12-01', 'router_id' => 901));
+    }
+    // Duplicate secret matches must not inflate counts or money.
+    foreach (array(901, 902) as $router_id) {
+        insert_fixture('pppoe_secrets', array('username' => 'test-9001', 'router_id' => $router_id));
+    }
+    $customers->set_router_scope(901);
+    $expected_money_summary = array('total' => 4, 'cash_visit' => 2, 'transfer' => 1, 'unspecified' => 1,
+        'total_amount' => 605000.0, 'cash_visit_amount' => 300000.0, 'transfer_amount' => 180000.0, 'unspecified_amount' => 125000.0);
+    check($customers->get_collection_summary() === $expected_money_summary,
+        'Amounts use latest service, then positive profile, then customer price, counting equal prices and duplicate joins correctly');
+    $customers->get_paginated(1, 0, 'Customer 9002', 'transfer');
+    check($customers->get_collection_summary() === $expected_money_summary, 'Amount summary ignores table search, filter and pagination');
+    $db->where('id', 9006)->update('customers', array('payment_collection_method' => 'legacy'));
+    check($customers->get_collection_summary() === $expected_money_summary, 'Unspecified amount includes legacy collection values');
+    $db->where('id', 9006)->update('customers', array('package_price' => 0));
+    $without_price = $customers->get_collection_summary();
+    check($without_price['unspecified_amount'] === 0.0 && $without_price['total_amount'] === 480000.0,
+        'Customers without a positive package price contribute zero');
+    $customers->set_router_scope(902);
+    $other_router = $customers->get_collection_summary();
+    check($other_router['total_amount'] === 400000.0 && $other_router['transfer_amount'] === 400000.0,
+        'Package amounts follow selected router');
+
+    // Exercise form payload, persistence and actual invoice generation together.
+    require_once APPPATH . 'controllers/Customers.php';
+    $ci->load->library('form_validation');
+    $controller_reflection = new ReflectionClass('Customers');
+    $customer_controller = $controller_reflection->newInstanceWithoutConstructor();
+    $customer_controller->db = $db;
+    $customer_controller->input = $ci->input;
+    $customer_controller->form_validation = $ci->form_validation;
+    $customer_fields = $controller_reflection->getProperty('customer_fields');
+    $customer_fields->setAccessible(true);
+    $customer_fields->setValue($customer_controller, array('monthly_price_override', 'profile_id', 'package_price'));
+    foreach (array('', '0', '125000', '125000.50', '999999999999.99') as $valid_price) {
+        check($customer_controller->valid_monthly_price($valid_price), 'Accept valid customer price: ' . $valid_price);
+    }
+    foreach (array('-1', '1e5', '125.000,50', '12.345', '1000000000000', array('125000')) as $invalid_price) {
+        check(!$customer_controller->valid_monthly_price($invalid_price), 'Reject invalid customer price');
+    }
+    $payload_method = $controller_reflection->getMethod('collect_form_payload');
+    $payload_method->setAccessible(true);
+    $strip_method = $controller_reflection->getMethod('strip_pppoe_payload_for_standard_update');
+    $strip_method->setAccessible(true);
+    $saved_post = $_POST;
+    $_POST = array('monthly_price_override' => '125000.50');
+    $price_payload = $payload_method->invoke($customer_controller);
+    $strip_method->invokeArgs($customer_controller, array(&$price_payload));
+    check($price_payload === array('monthly_price_override' => '125000.50'), 'Ordinary customer edit retains custom monthly price');
+    $customers->set_router_scope(901);
+    $service_snapshot = $db->order_by('id')->get('customer_services')->result_array();
+    $profile_snapshot = $db->order_by('id')->get('ppp_profiles')->result_array();
+    $invoice_snapshot = $db->order_by('id')->get('invoices')->result_array();
+    check($customers->update(9001, $price_payload), 'Save customer-specific monthly price');
+    check($customers->update(9004, $price_payload) === false, 'Price edit respects router access');
+    $priced_rows = $customers->get_paginated(20, 0, 'Customer 9001');
+    check((float) $priced_rows[0]->effective_monthly_price === 125000.50, 'Customer list uses custom price above service price');
+    $custom_summary = $customers->get_collection_summary();
+    check($custom_summary['cash_visit_amount'] === 275000.50 && $custom_summary['total_amount'] === 455000.50,
+        'Collection summary uses custom monthly price once despite duplicate joins');
+    $context_method = $controller_reflection->getMethod('get_customer_service_context');
+    $context_method->setAccessible(true);
+    $custom_context = $context_method->invoke($customer_controller, 9001, $customers->get_by_id(9001));
+    check($custom_context['price'] === 125000.50, 'Manual invoice context uses customer-specific price');
+    $sync_method = $controller_reflection->getMethod('should_sync_pppoe_update');
+    $sync_method->setAccessible(true);
+    check($sync_method->invoke($customer_controller, $customers->get_by_id(9001), array('ppp_profile_id' => 902),
+        902, 901, 'test-9001', '') === false, 'Price-only edit does not request PPP provisioning');
+    $real_billing_model = new Billing_automation_model();
+    $ci->billing_automation_model = $real_billing_model;
+    $priced_customers = $real_billing_model->get_active_customers_with_profile(901);
+    $model->fixtures = array_values(array_filter($priced_customers, static function ($row) { return (int) $row['customer_id'] === 9001; }));
+    $ci->billing_automation_model = $model;
+    $new_invoices = $ci->billing_automation_service->generate_monthly_invoices('2027-03', 901);
+    check($new_invoices['stats']['total_created'] === 1 && $new_invoices['stats']['total_failed'] === 0,
+        'Generate next invoice from real customer custom-price data');
+    $custom_invoice = $db->where('customer_id', 9001)->where('billing_period_start', '2027-03-01')->get('invoices')->row_array();
+    check((float) $custom_invoice['total_amount'] === 250001.0 && $custom_invoice['billing_period_end'] === '2027-04-30',
+        'Two-month invoice multiplies agreed customer price correctly');
+    check($db->where('id <=', $invoice_snapshot[count($invoice_snapshot) - 1]['id'])->order_by('id')->get('invoices')->result_array() === $invoice_snapshot,
+        'Changing customer price preserves previously issued invoices');
+    check($db->order_by('id')->get('customer_services')->result_array() === $service_snapshot
+        && $db->order_by('id')->get('ppp_profiles')->result_array() === $profile_snapshot,
+        'Customer price edits preserve service bandwidth and shared package prices');
+    $_POST = array('monthly_price_override' => '');
+    $reset_payload = $payload_method->invoke($customer_controller);
+    check($reset_payload === array('monthly_price_override' => null) && $customers->update(9001, $reset_payload),
+        'Blank price clears the customer override');
+    $reset_rows = $customers->get_paginated(20, 0, 'Customer 9001');
+    check((float) $reset_rows[0]->effective_monthly_price === 150000.0, 'Cleared override restores service price');
+    $_POST = array('monthly_price_override' => '0');
+    check($customers->update(9001, $payload_method->invoke($customer_controller)), 'Save an explicit zero-price override');
+    $zero_rows = $customers->get_paginated(20, 0, 'Customer 9001');
+    check((float) $zero_rows[0]->effective_monthly_price === 0.0
+        && $context_method->invoke($customer_controller, 9001, $customers->get_by_id(9001))['price'] === 0.0,
+        'Explicit zero price stays zero in list and manual billing context');
+    $_POST = array('monthly_price_override' => array('125000'));
+    check(!$customer_controller->valid_monthly_price('125000'), 'Reject array price even when form validation passes individual elements');
+    $_POST = $saved_post;
 
     echo "PASS: {$checks} checks; only temporary tables and fake messaging used.\n";
 } finally {

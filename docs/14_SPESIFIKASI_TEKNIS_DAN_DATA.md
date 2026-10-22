@@ -131,6 +131,7 @@ Field di bawah dikelompokkan berdasarkan makna. Sebagian bersifat opsional atau 
 | `status` | Alur billable mengenali active/suspended/isolated/isolir; pending/terminated tergantung schema dan operasional |
 | `pppoe_username`, field password PPP | Kredensial layanan; jangan disalin ke bahan presentasi publik |
 | `ppp_profile_id`, field harga | Pilihan paket; controller menyesuaikan kolom profile/harga yang tersedia |
+| `customers.monthly_price_override` | DECIMAL(15,2) nullable; harga bulanan khusus per customer. NULL memakai harga layanan/paket, 0 merupakan harga khusus nol |
 | `connection_type` dan alias service mode | Pembedaan PPPoE/static sesuai resolver controller |
 | `ip_address`, `remote_ip`, `mac_address` | Alamat jaringan; sinkronisasi static menambah/memanfaatkan kolom terkait |
 | `join_date`, `install_date`, `installation_date` | Tanggal bergabung/pemasangan dan fallback legacy |
@@ -145,6 +146,8 @@ Field di bawah dikelompokkan berdasarkan makna. Sebagian bersifat opsional atau 
 | Profile/plan, username, IP, price pada service | Konteks layanan dan harga yang dipakai resolver billing/upgrade |
 
 Sumber: [Customers](../application/controllers/Customers.php), [Customer_model](../application/models/Customer_model.php), [Billing_automation_model](../application/models/Billing_automation_model.php), [migrasi due day](../application/migrations/20260607120000_customer_due_date_day.php), [migrasi siklus](../application/migrations/20261022120000_customer_billing_cycles_offline_collection.php).
+
+Harga khusus ditambahkan oleh [migrasi harga customer](../application/migrations/20261023090000_customer_monthly_price_override.php). Form tambah/edit menerima nominal tanpa pemisah ribuan dan maksimal dua desimal; mengosongkan input menyimpan NULL. Daftar customer, ringkasan nominal, invoice baru otomatis/manual, dan harga lama untuk prorata upgrade mendahulukan harga khusus. Siklus dua bulan mengalikan harga bulanan dengan dua. Perubahan harga tidak mengubah invoice yang sudah terbit atau bandwidth paket. Proses Upgrade Paket memakai harga paket baru dan menghapus override lama; harga khusus dapat diatur kembali setelah upgrade.
 
 ### 4.3 Kamus invoice, payment, dan cashflow
 
